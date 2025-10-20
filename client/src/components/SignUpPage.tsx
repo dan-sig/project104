@@ -42,7 +42,7 @@ export default function SignUpPage({
     }
     
     // Store onboarding data in localStorage before OIDC redirect
-    localStorage.setItem('fitforge_onboarding_data', JSON.stringify({
+    localStorage.setItem('morphit_onboarding_data', JSON.stringify({
       questionnaireData,
       generatedProgram,
       timestamp: Date.now()

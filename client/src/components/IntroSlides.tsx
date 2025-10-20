@@ -111,7 +111,7 @@ export default function IntroSlides({ onComplete }: IntroSlidesProps) {
 
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 max-w-3xl mx-auto">
             <p className="text-sm text-center">
-              <strong>The Result:</strong> FitForge builds functional strength that transfers to real life—lifting groceries, 
+              <strong>The Result:</strong> Morphit builds functional strength that transfers to real life—lifting groceries, 
               playing with kids, and preventing injuries—while other apps create gym-only gains that don't translate to everyday movement.
             </p>
           </div>

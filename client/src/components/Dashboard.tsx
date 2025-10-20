@@ -79,7 +79,7 @@ export default function Dashboard({
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Dumbbell className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">FitForge</h1>
+              <h1 className="text-xl font-bold">Morphit</h1>
             </div>
             <ThemeToggle />
           </div>
@@ -115,7 +115,7 @@ export default function Dashboard({
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Dumbbell className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">FitForge</h1>
+            <h1 className="text-xl font-bold">Morphit</h1>
           </div>
           <ThemeToggle />
         </div>
