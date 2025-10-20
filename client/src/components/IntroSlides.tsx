@@ -12,12 +12,12 @@ export default function IntroSlides({ onComplete }: IntroSlidesProps) {
 
   const slides = [
     {
-      title: "Why FitForge is Different",
+      title: "Why Morphit is Different",
       content: (
         <div className="space-y-6">
           <p className="text-lg text-muted-foreground text-center max-w-3xl mx-auto">
             Most fitness apps use random workouts that create imbalances and increase injury risk. 
-            FitForge is built on exercise science principles that actually work.
+            Morphit is built on exercise science principles that actually work.
           </p>
           
           <div className="max-w-4xl mx-auto">
@@ -25,7 +25,7 @@ export default function IntroSlides({ onComplete }: IntroSlidesProps) {
               {/* Header Row */}
               <div className="grid grid-cols-3 gap-4 pb-2 border-b-2">
                 <div></div>
-                <div className="text-center font-bold text-primary">FitForge</div>
+                <div className="text-center font-bold text-primary">Morphit</div>
                 <div className="text-center font-medium text-muted-foreground">Other Apps</div>
               </div>
 

@@ -32,7 +32,7 @@ export default function About() {
           <Card className="p-8 space-y-6">
             <h2 className="text-2xl font-semibold">Real Fitness for Real Life</h2>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Forget isolated muscle training. FitForge programs are built around <strong>10 fundamental movement patterns</strong> that your body uses every single day:
+              Forget isolated muscle training. Morphit programs are built around <strong>10 fundamental movement patterns</strong> that your body uses every single day:
             </p>
             
             <div className="grid sm:grid-cols-2 gap-4">
