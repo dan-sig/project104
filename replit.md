@@ -1,7 +1,7 @@
-# FitForge - Personal Fitness Program Application
+# Morphit - Personal Fitness Program Application
 
 ## Overview
-FitForge is a science-backed fitness application that generates personalized workout programs using professional CNS-ordered programming (warmup → power → compounds → isolations → core → cardio). It trains 10 real-world functional movement patterns with adaptive difficulty, offering 3/4/5-day splits and 30/45/60/90-minute workout options. The application features intelligent equipment-based exercise swapping (perfect for travel), Zone 2 and HIIT cardio training, fitness assessments to unlock advanced movements, and a flexible 7-day cycle system with automatic missed workout rescheduling. Built on exercise science principles with AI-enhanced insights as supplemental features.
+Morphit is a science-backed fitness application that generates personalized workout programs using professional CNS-ordered programming (warmup → power → compounds → isolations → core → cardio). It trains 10 real-world functional movement patterns with adaptive difficulty, offering 3/4/5-day splits and 30/45/60/90-minute workout options. The application features intelligent equipment-based exercise swapping (perfect for travel), Zone 2 and HIIT cardio training, fitness assessments to unlock advanced movements, and a flexible 7-day cycle system with automatic missed workout rescheduling. Built on exercise science principles with AI-enhanced insights as supplemental features.
 
 ## Recent Changes (October 2025)
 
@@ -10,7 +10,7 @@ FitForge is a science-backed fitness application that generates personalized wor
 - Free tier showcases 7 core features: CNS ordering, 10 movement patterns, equipment swapping, partial workouts, auto-rescheduling, monthly fitness test, monthly program generation
 - Premium tier shows unlimited tests/programs, advanced reporting, skip rest (ad-free), progress/regress levels, custom programs, custom exercises, favorite/hide exercises
 - Enhanced CNS programming explanation with 5 advanced cardio types: HIIT (VO₂ max), Power Intervals (lactate threshold), Tempo Circuits (aerobic endurance), Functional Circuits (dynamic capacity), Zone 2 (fat metabolism/recovery)
-- Added science-backed messaging explaining why FitForge's cardio aligns with CNS recovery state vs traditional cardio that drains performance
+- Added science-backed messaging explaining why Morphit's cardio aligns with CNS recovery state vs traditional cardio that drains performance
 - Free tier presented as complete and valuable (not limited), Premium positioned as power-user upgrade
 
 **Architecture Refactoring - Session Status Single Source of Truth (October 16, 2025):**
