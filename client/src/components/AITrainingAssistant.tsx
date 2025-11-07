@@ -5,8 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Sparkles, TrendingUp, Dumbbell, Settings, Loader2, ChevronDown, ChevronUp, Target, Calendar, Zap } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Brain, Sparkles, TrendingUp, Dumbbell, Settings, Loader2, ChevronDown, ChevronUp, Target, Calendar, Zap, CheckCircle } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface InsightResponse {
@@ -16,12 +16,22 @@ interface InsightResponse {
   error?: string;
 }
 
+interface GenerateProgramResponse {
+  success: boolean;
+  parsedData?: any;
+  needsAssessment?: boolean;
+  needsMoreInfo?: boolean;
+  missingFields?: string[];
+  error?: string;
+}
+
 export default function AITrainingAssistant() {
   const [isOpen, setIsOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"insights" | "generate" | "update">("insights");
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [insightResults, setInsightResults] = useState<InsightResponse | null>(null);
+  const [generateSuccess, setGenerateSuccess] = useState(false);
   const { toast } = useToast();
 
   const examplePrompts = {
@@ -77,6 +87,90 @@ export default function AITrainingAssistant() {
       toast({
         title: "Error",
         description: "Failed to generate insights. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateProgram = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please describe your fitness goals and preferences.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setGenerateSuccess(false);
+
+    try {
+      // Step 1: Parse the prompt and update user profile
+      const parseResponse = await apiRequest("POST", "/api/programs/generate-from-prompt", { prompt });
+      
+      // Check for HTTP errors first
+      if (!parseResponse.ok) {
+        const errorData = await parseResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to process your request. Please try again.");
+      }
+      
+      const parseResult: GenerateProgramResponse = await parseResponse.json();
+
+      // Handle missing information
+      if (!parseResult.success || parseResult.needsMoreInfo) {
+        const missingInfo = parseResult.missingFields?.length 
+          ? `Missing: ${parseResult.missingFields.join(", ")}`
+          : parseResult.error || "Please provide more information about your fitness goals.";
+        
+        toast({
+          title: "Need more details",
+          description: missingInfo,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle fitness assessment requirement
+      if (parseResult.needsAssessment) {
+        toast({
+          title: "Fitness assessment required",
+          description: "Please complete the fitness assessment in Settings before generating a program. This helps us create the right program for your fitness level.",
+          variant: "default",
+          duration: 6000,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Step 2: Generate the program with updated profile
+      const generateResponse = await apiRequest("POST", "/api/programs/generate", {});
+      
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to generate program");
+      }
+
+      const generateResult = await generateResponse.json();
+
+      // Success! Invalidate queries and show success state
+      await queryClient.invalidateQueries({ queryKey: ["/api/home-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/program-workouts"] });
+      
+      setGenerateSuccess(true);
+      toast({
+        title: "Program created!",
+        description: "Your new workout program is ready. Check the home page to get started.",
+      });
+      
+    } catch (error) {
+      console.error("Failed to generate program:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate program. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -231,6 +325,92 @@ export default function AITrainingAssistant() {
     );
   };
 
+  const renderGenerateContent = () => {
+    if (generateSuccess) {
+      return (
+        <div className="space-y-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1" data-testid="text-program-success">
+                    Program created successfully!
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Your new workout program is ready. Check the home page to start your first workout.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setGenerateSuccess(false);
+              setPrompt("");
+            }}
+            className="w-full"
+            data-testid="button-create-another"
+          >
+            Create Another Program
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <Textarea
+          placeholder="Describe your fitness goals and preferences..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={4}
+          className="text-base resize-none"
+          data-testid="input-generate-prompt"
+        />
+
+        <Button
+          onClick={handleGenerateProgram}
+          disabled={isLoading || !prompt.trim()}
+          className="w-full"
+          data-testid="button-generate-program"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Creating program...
+            </>
+          ) : (
+            <>
+              <Dumbbell className="h-4 w-4 mr-2" />
+              Generate Program
+            </>
+          )}
+        </Button>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Example prompts:</p>
+          <div className="grid gap-2">
+            {examplePrompts.generate.map((example, idx) => (
+              <Button
+                key={idx}
+                variant="outline"
+                onClick={() => handleExampleClick(example)}
+                className="text-left h-auto whitespace-normal p-3 justify-start text-sm hover-elevate"
+                data-testid={`button-example-generate-${idx}`}
+              >
+                <Sparkles className="h-3 w-3 mr-2 flex-shrink-0 text-primary" />
+                {example}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderComingSoon = (mode: string) => (
     <Card className="bg-muted/50">
       <CardContent className="pt-6 text-center space-y-2">
@@ -239,9 +419,7 @@ export default function AITrainingAssistant() {
         </div>
         <h3 className="font-semibold">Coming Soon</h3>
         <p className="text-sm text-muted-foreground" data-testid={`text-${mode}-coming-soon`}>
-          {mode === "generate" 
-            ? "Generate custom workout programs with AI"
-            : "Update your preferences and equipment with natural language"}
+          Update your preferences and equipment with natural language
         </p>
         <div className="pt-2 space-y-1">
           <p className="text-xs text-muted-foreground">Example prompts:</p>
@@ -309,7 +487,7 @@ export default function AITrainingAssistant() {
               </TabsContent>
 
               <TabsContent value="generate" className="mt-0">
-                {renderComingSoon("generate")}
+                {renderGenerateContent()}
               </TabsContent>
 
               <TabsContent value="update" className="mt-0">
