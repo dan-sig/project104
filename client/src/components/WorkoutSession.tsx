@@ -30,6 +30,7 @@ interface ExerciseData {
   tempo: string;
   rpe?: number;
   rir?: number;
+  restSeconds: number;
   formVideoUrl: string;
   durationSeconds?: number;
 }
@@ -196,6 +197,7 @@ export default function WorkoutSession({ onComplete }: WorkoutSessionProps) {
             tempo: pe.tempo || '2-0-2-0',
             rpe: pe.targetRPE || undefined,
             rir: pe.targetRIR || undefined,
+            restSeconds: pe.restSeconds ?? 90,
             formVideoUrl: pe.exercise.videoUrl || '#',
             durationSeconds: pe.durationSeconds || undefined,
           };
@@ -329,6 +331,12 @@ export default function WorkoutSession({ onComplete }: WorkoutSessionProps) {
   const getRestDuration = () => {
     if (isWarmup()) return 0; // No rest for warmups
     
+    // Use cycle-specific rest period from current exercise if available
+    if (currentExercise?.restSeconds !== undefined) {
+      return currentExercise.restSeconds;
+    }
+    
+    // Fallback to category-based rest periods
     const category = currentProgramExercise?.exercise?.exerciseCategory;
     
     switch (category) {
@@ -1061,6 +1069,25 @@ export default function WorkoutSession({ onComplete }: WorkoutSessionProps) {
               </p>
             </div>
           )}
+
+          <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Tempo</p>
+                <p className="text-lg font-mono font-bold" data-testid="text-exercise-tempo">{currentExercise.tempo}</p>
+              </div>
+              {currentExercise.rpe && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Target RPE</p>
+                  <p className="text-lg font-mono font-bold" data-testid="text-exercise-rpe">{currentExercise.rpe}/10</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Rest Period</p>
+                <p className="text-lg font-bold" data-testid="text-exercise-rest">{currentExercise.restSeconds}s</p>
+              </div>
+            </div>
+          </div>
           
           <div className="aspect-video bg-muted rounded-lg mb-6 flex items-center justify-center">
             <Button variant="outline" size="lg" data-testid="button-play-video">

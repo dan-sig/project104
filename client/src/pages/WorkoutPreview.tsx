@@ -23,6 +23,7 @@ interface ExerciseWithProgression {
   weight: string;
   tempo: string;
   rpe?: number;
+  restSeconds: number;
   formVideoUrl: string;
   lastRir?: number;
   weightIncrease?: number;
@@ -108,6 +109,7 @@ export default function WorkoutPreview() {
             weight: '0',
             tempo: pe.tempo || '2-0-2-0',
             rpe: pe.targetRPE || undefined,
+            restSeconds: pe.restSeconds ?? 90,
             formVideoUrl: pe.exercise.videoUrl || '#',
             lastRir: undefined,
           };
@@ -339,7 +341,7 @@ export default function WorkoutPreview() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Tempo</p>
                       <p className="text-lg font-mono font-bold" data-testid={`tempo-${index}`}>{exercise.tempo}</p>
@@ -350,6 +352,10 @@ export default function WorkoutPreview() {
                         <p className="text-lg font-mono font-bold" data-testid={`rpe-${index}`}>{exercise.rpe}/10</p>
                       </div>
                     )}
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rest</p>
+                      <p className="text-lg font-bold" data-testid={`rest-${index}`}>{exercise.restSeconds}s</p>
+                    </div>
                   </div>
 
                   {exercise.lastRir !== undefined ? (
