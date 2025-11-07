@@ -432,7 +432,7 @@ export default function ProgressView({ onBack }: ProgressViewProps) {
           </Card>
         )}
 
-        {user && (user.bmr || user.targetCalories || user.nutritionGoal) && (
+        {user && (user.bmr || user.targetCalories || user.focusCycle) && (
           <Card className="p-6">
             <h3 className="text-xl font-semibold mb-4">Nutrition Summary</h3>
             <div className="grid md:grid-cols-3 gap-4">
@@ -448,10 +448,10 @@ export default function ProgressView({ onBack }: ProgressViewProps) {
                   <p className="text-2xl font-bold">{user.targetCalories.toLocaleString()} cal</p>
                 </div>
               )}
-              {user.nutritionGoal && (
+              {user.focusCycle && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Goal</p>
-                  <p className="text-2xl font-bold capitalize">{user.nutritionGoal}</p>
+                  <p className="text-sm text-muted-foreground">Cycle</p>
+                  <p className="text-2xl font-bold capitalize">{user.focusCycle}</p>
                 </div>
               )}
             </div>

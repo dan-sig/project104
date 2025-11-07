@@ -70,7 +70,7 @@ export default function Settings() {
   const unitPreference = user?.unitPreference || 'imperial';
 
   const [helpTicket, setHelpTicket] = useState("");
-  const [selectedGoal, setSelectedGoal] = useState("maintain");
+  const [selectedGoal, setSelectedGoal] = useState("move");
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [daysPerWeek, setDaysPerWeek] = useState(3);
   const [workoutDuration, setWorkoutDuration] = useState(60);
@@ -86,12 +86,12 @@ export default function Settings() {
   const [originalEquipment, setOriginalEquipment] = useState<string[]>([]);
   const [originalDaysPerWeek, setOriginalDaysPerWeek] = useState(3);
   const [originalWorkoutDuration, setOriginalWorkoutDuration] = useState(60);
-  const [originalGoal, setOriginalGoal] = useState("maintain");
+  const [originalGoal, setOriginalGoal] = useState("move");
   const [originalSelectedDates, setOriginalSelectedDates] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
-      setSelectedGoal(user.nutritionGoal || "maintain");
+      setSelectedGoal(user.focusCycle || "move");
       setSelectedEquipment(user.equipment || []);
       setDaysPerWeek(user.daysPerWeek || 3);
       setWorkoutDuration(user.workoutDuration || 60);
@@ -102,7 +102,7 @@ export default function Settings() {
       setOriginalEquipment(user.equipment || []);
       setOriginalDaysPerWeek(user.daysPerWeek || 3);
       setOriginalWorkoutDuration(user.workoutDuration || 60);
-      setOriginalGoal(user.nutritionGoal || "maintain");
+      setOriginalGoal(user.focusCycle || "move");
       setOriginalSelectedDates(user.selectedDates || []);
       
       const isMetric = unitPreference === 'metric';
@@ -252,7 +252,7 @@ export default function Settings() {
     } else {
       // No program-affecting changes, just save (exclude selectedDates - only save with program generation)
       updateProgramSettingsMutation.mutate({
-        nutritionGoal: selectedGoal,
+        focusCycle: selectedGoal,
         equipment: selectedEquipment,
         daysPerWeek,
         workoutDuration,
@@ -264,7 +264,7 @@ export default function Settings() {
     try {
       // Save preferences and wait for completion (exclude selectedDates - no new workouts generated)
       await updateProgramSettingsMutation.mutateAsync({
-        nutritionGoal: selectedGoal,
+        focusCycle: selectedGoal,
         equipment: selectedEquipment,
         daysPerWeek,
         workoutDuration,
@@ -288,7 +288,7 @@ export default function Settings() {
     try {
       // Save preferences first and wait for completion
       await updateProgramSettingsMutation.mutateAsync({
-        nutritionGoal: selectedGoal,
+        focusCycle: selectedGoal,
         equipment: selectedEquipment,
         daysPerWeek,
         workoutDuration,
@@ -586,42 +586,52 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
-              <Label htmlFor="goal">Nutrition Goal</Label>
+              <Label htmlFor="goal">Focus Cycle</Label>
               <Select value={selectedGoal} onValueChange={setSelectedGoal}>
                 <SelectTrigger id="goal" data-testid="select-goal">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lose">Lose Weight</SelectItem>
-                  <SelectItem value="maintain">Maintain Weight</SelectItem>
-                  <SelectItem value="gain">Gain Muscle</SelectItem>
+                  <SelectItem value="flow">Flow (Mobility + Stability)</SelectItem>
+                  <SelectItem value="build">Build (Hypertrophy)</SelectItem>
+                  <SelectItem value="strong">Strong (Strength)</SelectItem>
+                  <SelectItem value="move">Move (Longevity)</SelectItem>
                 </SelectContent>
               </Select>
               
-              {/* Goal-specific descriptions */}
-              {selectedGoal === "gain" && (
-                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                  <p className="text-sm font-medium text-primary">Muscle Gain Focus</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Prioritizes lifting volume with minimal cardio (5.5min HIIT only). Cardio included only when you have 3+ secondary exercises.
-                  </p>
-                </div>
-              )}
-              
-              {selectedGoal === "maintain" && (
+              {/* Cycle-specific descriptions */}
+              {selectedGoal === "flow" && (
                 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Balanced Training</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Flow Cycle</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Balanced strength and cardio mix (7.5min alternating HIIT/Steady-State). Cardio included when you have 2+ secondary exercises.
+                    Mobility and stability focus with controlled tempos (4-1-2). Lower intensity (RPE 5-6), more warmup, steady-state cardio.
                   </p>
                 </div>
               )}
               
-              {selectedGoal === "lose" && (
-                <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Fat Loss Focus</p>
+              {selectedGoal === "build" && (
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-sm font-medium text-primary">Build Cycle</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Maximizes calorie burn with varied cardio (9min rotating through 4 types). Cardio included when you have 1+ secondary exercise.
+                    Hypertrophy-focused with moderate tempo (2-1-1). RPE 7-8, 60-90s rest, minimal HIIT cardio for time efficiency.
+                  </p>
+                </div>
+              )}
+              
+              {selectedGoal === "strong" && (
+                <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Strong Cycle</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Maximal strength with fast tempos (2-0-X). High intensity (RPE 8-9), 120-150s rest, more power work, minimal cardio.
+                  </p>
+                </div>
+              )}
+              
+              {selectedGoal === "move" && (
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Move Cycle</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Balanced longevity approach with moderate tempo (3-1-1). RPE 7, 60-90s rest, varied cardio for overall fitness.
                   </p>
                 </div>
               )}

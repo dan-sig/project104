@@ -37,11 +37,9 @@ import {
 // Import constant values used throughout the app
 import { 
   EXPERIENCE_LEVELS,  // beginner, intermediate, advanced
-  NUTRITION_GOALS,    // gain, maintain, lose
   MOVEMENT_PATTERNS,  // The 10 foundational movement patterns
   CARDIO_TYPES,       // HIIT, steady state, zone 2
-  type ExperienceLevel, 
-  type NutritionGoal 
+  type ExperienceLevel
 } from "@shared/constants";
 
 // ==========================================
@@ -831,9 +829,9 @@ export async function generateWorkoutProgram(
   
   console.log(`[SCHEDULING] Mode: ${useSelectedDates ? 'DATE-BASED' : 'DAY-OF-WEEK'}, Workouts: ${daysPerWeek}`);
 
-  // Select the appropriate program template based on user's nutrition goal
-  const selectedTemplate = selectProgramTemplate(user.nutritionGoal, latestAssessment.experienceLevel);
-  console.log(`[TEMPLATE] Selected template: ${selectedTemplate.name} for nutrition goal: ${user.nutritionGoal}`);
+  // Select the appropriate program template based on user's focus cycle
+  const selectedTemplate = selectProgramTemplate(user.focusCycle, latestAssessment.experienceLevel);
+  console.log(`[TEMPLATE] Selected template: ${selectedTemplate.name} for focus cycle: ${user.focusCycle}`);
   
   // WEEK-LEVEL PATTERN DISTRIBUTION
   // Design entire week's pattern emphasis before selecting exercises
@@ -884,7 +882,7 @@ export async function generateWorkoutProgram(
   console.log(`[WEEK-PLAN] Using ${daysPerWeek}-day weekly pattern distribution for varied workouts`);
   
   // PERCENTAGE-BASED TIME ALLOCATION MATRIX
-  // Allocates workout time based on BOTH nutrition goal AND workout duration
+  // Allocates workout time based on BOTH focus cycle AND workout duration
   // This ensures optimal training regardless of session length
   
   interface TimeAllocation {
@@ -897,25 +895,30 @@ export async function generateWorkoutProgram(
   type AllocationMatrix = Record<string, Record<number, TimeAllocation>>;
   
   const allocationMatrix: AllocationMatrix = {
-    gain: {
-      30: { warmup: 7, power: 18, strength: 65, cardio: 5 },   // Minimal cardio for short sessions
-      45: { warmup: 7, power: 18, strength: 63, cardio: 8 },
-      60: { warmup: 7, power: 18, strength: 60, cardio: 10 }
+    flow: {
+      30: { warmup: 10, power: 10, strength: 55, cardio: 20 },  // More warmup for mobility, controlled movements
+      45: { warmup: 10, power: 10, strength: 53, cardio: 23 },
+      60: { warmup: 12, power: 10, strength: 50, cardio: 25 }
     },
-    maintain: {
-      30: { warmup: 6, power: 17, strength: 60, cardio: 12 },  // Balanced approach
-      45: { warmup: 6, power: 17, strength: 58, cardio: 15 },
-      60: { warmup: 7, power: 18, strength: 55, cardio: 18 }
+    build: {
+      30: { warmup: 7, power: 15, strength: 68, cardio: 5 },   // Hypertrophy focus, minimal cardio
+      45: { warmup: 7, power: 15, strength: 65, cardio: 8 },
+      60: { warmup: 7, power: 15, strength: 63, cardio: 10 }
     },
-    lose: {
-      30: { warmup: 5, power: 15, strength: 55, cardio: 20 },  // Max cardio even in short sessions
-      45: { warmup: 5, power: 15, strength: 53, cardio: 23 },
-      60: { warmup: 6, power: 16, strength: 50, cardio: 25 }
+    strong: {
+      30: { warmup: 7, power: 20, strength: 65, cardio: 3 },   // Max power and strength, minimal cardio
+      45: { warmup: 7, power: 20, strength: 63, cardio: 5 },
+      60: { warmup: 7, power: 20, strength: 60, cardio: 8 }
+    },
+    move: {
+      30: { warmup: 8, power: 15, strength: 58, cardio: 14 },  // Balanced longevity approach
+      45: { warmup: 8, power: 15, strength: 55, cardio: 17 },
+      60: { warmup: 8, power: 15, strength: 52, cardio: 20 }
     }
   };
   
-  // Get allocation percentages for current goal and duration
-  const nutritionGoal = (user.nutritionGoal || "maintain").toLowerCase();
+  // Get allocation percentages for current focus cycle and duration
+  const focusCycle = (user.focusCycle || "move").toLowerCase();
   const getDurationKey = (duration: number): number => {
     if (duration <= 35) return 30;
     if (duration <= 52) return 45;
@@ -923,9 +926,9 @@ export async function generateWorkoutProgram(
   };
   
   const durationKey = getDurationKey(workoutDuration);
-  const allocation = allocationMatrix[nutritionGoal][durationKey];
+  const allocation = allocationMatrix[focusCycle][durationKey];
   
-  console.log(`[ALLOCATION-MATRIX] ${nutritionGoal.toUpperCase()} goal, ${workoutDuration}min → Using ${durationKey}min template: ${allocation.warmup}% warmup, ${allocation.power}% power, ${allocation.strength}% strength, ${allocation.cardio}% cardio`);
+  console.log(`[ALLOCATION-MATRIX] ${focusCycle.toUpperCase()} cycle, ${workoutDuration}min → Using ${durationKey}min template: ${allocation.warmup}% warmup, ${allocation.power}% power, ${allocation.strength}% strength, ${allocation.cardio}% cardio`);
   
   // Calculate time budgets from percentages
   const warmupTimeBudget = (workoutDuration * allocation.warmup) / 100;
@@ -956,26 +959,29 @@ export async function generateWorkoutProgram(
     restSeconds: 90
   });
   
-  // GOAL-SPECIFIC CARDIO CONFIGURATION
-  // Different nutrition goals require different cardio types
+  // CYCLE-SPECIFIC CARDIO CONFIGURATION
+  // Different focus cycles require different cardio types
   interface CardioConfig {
-    types: string[];  // Available cardio types for this goal
+    types: string[];  // Available cardio types for this cycle
   }
   
   const cardioConfigs: Record<string, CardioConfig> = {
-    gain: {
-      types: ["hiit"]  // HIIT only - most time-efficient
+    flow: {
+      types: ["steady-state", "tempo"]  // Low-moderate intensity for mobility/stability focus
     },
-    maintain: {
-      types: ["hiit", "steady-state"]  // Mix HIIT and steady-state
+    build: {
+      types: ["hiit"]  // HIIT only - most time-efficient for hypertrophy
     },
-    lose: {
-      types: ["hiit", "steady-state", "tempo", "circuit"]  // All cardio modalities
+    strong: {
+      types: ["hiit"]  // HIIT only - minimal interference with strength adaptation
+    },
+    move: {
+      types: ["hiit", "steady-state", "tempo"]  // Variety for longevity/balanced approach
     }
   };
   
-  const cardioConfig = cardioConfigs[nutritionGoal];
-  console.log(`[CARDIO-CONFIG] Nutrition goal: ${nutritionGoal}, cardio types: ${cardioConfig.types.join(', ')}, allocated time: ${cardioTimeBudget.toFixed(1)}min (${allocation.cardio}%)`);
+  const cardioConfig = cardioConfigs[focusCycle];
+  console.log(`[CARDIO-CONFIG] Focus cycle: ${focusCycle}, cardio types: ${cardioConfig.types.join(', ')}, allocated time: ${cardioTimeBudget.toFixed(1)}min (${allocation.cardio}%)`);
   
   // POWER EXERCISE TIME CALCULATION
   // Power exercises use 2 sets @ 60s rest for all levels
@@ -1028,7 +1034,7 @@ export async function generateWorkoutProgram(
                          (secondaryCount * secondaryCompoundTime) +
                          (cardioCount * cardioTimePerExercise);
   
-  console.log(`[EXERCISE-CALC] For ${workoutDuration}min ${nutritionGoal.toUpperCase()} session: ${warmupCount}w + ${powerCount}p + ${primaryCount}pri + ${secondaryCount}sec + ${cardioCount}c = ${estimatedTotal.toFixed(1)}min. Supersets: ${useSupersets ? 'YES' : 'NO'}`);
+  console.log(`[EXERCISE-CALC] For ${workoutDuration}min ${focusCycle.toUpperCase()} session: ${warmupCount}w + ${powerCount}p + ${primaryCount}pri + ${secondaryCount}sec + ${cardioCount}c = ${estimatedTotal.toFixed(1)}min. Supersets: ${useSupersets ? 'YES' : 'NO'}`);
   
   // ==========================================
   // WORKOUT GENERATION: Generate N workouts (where N = daysPerWeek)
@@ -2257,7 +2263,7 @@ export async function generateWorkoutProgram(
           else selectedCardioType = "circuit";                          // 15%
         }
         
-        console.log(`[CARDIO-TYPE] ${nutritionGoal} goal - Selected ${selectedCardioType} cardio for workout ${cardioWorkoutIndex + 1}`);
+        console.log(`[CARDIO-TYPE] ${focusCycle} cycle - Selected ${selectedCardioType} cardio for workout ${cardioWorkoutIndex + 1}`);
         
         // Filter cardio exercises by selected type
         // Map cardio types to exercise names/categories

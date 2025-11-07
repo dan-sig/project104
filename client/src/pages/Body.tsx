@@ -56,27 +56,33 @@ export default function Body() {
   const workoutCalories = todayCaloriesData?.calories || 0;
   const realTDEE = bmr + workoutCalories;
   
-  // Calculate recommended intake based on nutrition goal
-  const nutritionGoal = user?.nutritionGoal?.toLowerCase() || '';
+  // Calculate recommended intake based on focus cycle
+  const focusCycle = user?.focusCycle?.toLowerCase() || '';
   let recommendedIntake = realTDEE;
   let calorieAdjustment = 0;
   let goalDescription = "Maintenance";
   
-  // Muscle gain goals: add surplus
-  if (nutritionGoal.includes('gain') || nutritionGoal.includes('build') || 
-      nutritionGoal.includes('bulk') || nutritionGoal.includes('muscle') || 
-      nutritionGoal.includes('mass')) {
+  // Cycle-specific calorie adjustments
+  if (focusCycle === 'build') {
+    // Build cycle: Hypertrophy focus requires caloric surplus
     calorieAdjustment = 400;
     recommendedIntake = realTDEE + calorieAdjustment;
-    goalDescription = "Muscle Gain (+400 cal)";
-  }
-  // Fat loss goals: add deficit
-  else if (nutritionGoal.includes('lose') || nutritionGoal.includes('cut') || 
-           nutritionGoal.includes('shred') || nutritionGoal.includes('fat loss') || 
-           nutritionGoal.includes('weight loss')) {
-    calorieAdjustment = -500;
+    goalDescription = "Build Cycle (+400 cal)";
+  } else if (focusCycle === 'strong') {
+    // Strong cycle: Strength focus with moderate surplus
+    calorieAdjustment = 200;
     recommendedIntake = realTDEE + calorieAdjustment;
-    goalDescription = "Fat Loss (-500 cal)";
+    goalDescription = "Strong Cycle (+200 cal)";
+  } else if (focusCycle === 'flow') {
+    // Flow cycle: Mobility and stability at maintenance
+    calorieAdjustment = 0;
+    recommendedIntake = realTDEE;
+    goalDescription = "Flow Cycle (Maintenance)";
+  } else if (focusCycle === 'move') {
+    // Move cycle: Longevity at maintenance
+    calorieAdjustment = 0;
+    recommendedIntake = realTDEE;
+    goalDescription = "Move Cycle (Maintenance)";
   }
   
   const healthStats = {
@@ -235,8 +241,8 @@ export default function Body() {
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   {workoutCalories > 0 
-                    ? `Today's workouts burned ${workoutCalories} calories. Your recommended intake is adjusted based on your ${nutritionGoal || 'maintenance'} goal.`
-                    : `No workouts completed today. Your recommended intake is based on BMR and your ${nutritionGoal || 'maintenance'} goal.`
+                    ? `Today's workouts burned ${workoutCalories} calories. Your recommended intake is adjusted based on your ${focusCycle || 'maintenance'} cycle.`
+                    : `No workouts completed today. Your recommended intake is based on BMR and your ${focusCycle || 'maintenance'} cycle.`
                   }
                 </p>
               </div>

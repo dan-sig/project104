@@ -111,8 +111,8 @@ export default function PromptOnboarding({ onComplete }: PromptOnboardingProps) 
               <p className="text-lg font-semibold">{parsedData.sessionDuration} minutes</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Nutrition Goal</p>
-              <p className="text-lg font-semibold capitalize">{parsedData.nutritionGoal}</p>
+              <p className="text-sm text-muted-foreground">Focus Cycle</p>
+              <p className="text-lg font-semibold capitalize">{parsedData.focusCycle}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Experience Level</p>

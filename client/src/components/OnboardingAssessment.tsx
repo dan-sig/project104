@@ -15,7 +15,7 @@
 // DATA COLLECTED:
 // - Training preferences (days/week, duration, equipment)
 // - Body metrics (height, weight, age)
-// - Nutrition goals (gain/maintain/lose)
+// - Focus cycles (gain/maintain/lose)
 // - Fitness test results (optional but recommended)
 // - Calendar dates for first workout cycle
 //
@@ -173,7 +173,7 @@ export default function OnboardingAssessment() {
         equipment: promptData?.equipment || questionnaireData?.equipment || [],
         workoutDuration: promptData?.sessionDuration || questionnaireData?.availability?.minutesPerSession,
         daysPerWeek: promptData?.daysPerWeek || questionnaireData?.availability?.daysPerWeek,
-        nutritionGoal: promptData?.nutritionGoal || nutritionData?.goal,
+        focusCycle: promptData?.focusCycle || nutritionData?.goal,
         selectedDates: dates,  // Calendar dates for workout scheduling
         
         // Legacy questionnaire data (for backwards compatibility)
