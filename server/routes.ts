@@ -1396,6 +1396,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // POST /api/profile/update-from-prompt - Update user profile from natural language without regenerating program
+  // Receives: { prompt: string }
+  // Returns: { success, updatedFields, message }
+  app.post("/api/profile/update-from-prompt", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { prompt } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+      
+      console.log("[PROFILE-UPDATE] Parsing user prompt:", prompt);
+      
+      // Parse the prompt using OpenAI
+      const parseResult = await parsePromptToFitnessData(prompt);
+      
+      if (!parseResult.success) {
+        return res.json({
+          success: false,
+          error: parseResult.error,
+          missingFields: parseResult.missingFields,
+          needsMoreInfo: true,
+        });
+      }
+      
+      const parsedData = parseResult.data!;
+      console.log("[PROFILE-UPDATE] Successfully extracted data:", parsedData);
+      
+      // Build update object with only the fields that were specified
+      const updateData: any = {};
+      const updatedFields: string[] = [];
+      
+      if (parsedData.daysPerWeek !== undefined) {
+        updateData.daysPerWeek = parsedData.daysPerWeek;
+        updatedFields.push(`Training ${parsedData.daysPerWeek} days per week`);
+      }
+      
+      if (parsedData.sessionDuration !== undefined) {
+        updateData.sessionDuration = parsedData.sessionDuration;
+        updatedFields.push(`${parsedData.sessionDuration}-minute workouts`);
+      }
+      
+      if (parsedData.equipment && parsedData.equipment.length > 0) {
+        updateData.availableEquipment = parsedData.equipment;
+        updatedFields.push(`Equipment: ${parsedData.equipment.join(', ')}`);
+      }
+      
+      if (parsedData.nutritionGoal) {
+        updateData.nutritionGoal = parsedData.nutritionGoal;
+        updatedFields.push(`Goal: ${parsedData.nutritionGoal}`);
+      }
+      
+      if (parsedData.experienceLevel) {
+        updateData.fitnessLevel = parsedData.experienceLevel;
+        updatedFields.push(`Experience: ${parsedData.experienceLevel}`);
+      }
+      
+      // Update user profile
+      if (Object.keys(updateData).length > 0) {
+        await storage.updateUser(userId, updateData);
+      }
+      
+      res.json({
+        success: true,
+        updatedFields,
+        message: updatedFields.length > 0 
+          ? `Updated: ${updatedFields.join(', ')}`
+          : "No changes detected in your request",
+      });
+    } catch (error) {
+      console.error("[PROFILE-UPDATE] Error:", error);
+      res.status(500).json({ error: "Failed to update your profile. Please try rephrasing." });
+    }
+  });
+  
   // GET /api/programs/example-prompts - Get example prompts for user guidance
   app.get("/api/programs/example-prompts", (req: Request, res: Response) => {
     res.json({ examples: getExamplePrompts() });

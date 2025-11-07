@@ -25,6 +25,15 @@ interface GenerateProgramResponse {
   error?: string;
 }
 
+interface UpdateProfileResponse {
+  success: boolean;
+  updatedFields?: string[];
+  message?: string;
+  needsMoreInfo?: boolean;
+  missingFields?: string[];
+  error?: string;
+}
+
 export default function AITrainingAssistant() {
   const [isOpen, setIsOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"insights" | "generate" | "update">("insights");
@@ -32,6 +41,8 @@ export default function AITrainingAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [insightResults, setInsightResults] = useState<InsightResponse | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [updatedFields, setUpdatedFields] = useState<string[]>([]);
   const { toast } = useToast();
 
   const examplePrompts = {
@@ -171,6 +182,71 @@ export default function AITrainingAssistant() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to generate program. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Prompt required",
+        description: "Please describe what you'd like to change in your profile.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setUpdateSuccess(false);
+    setUpdatedFields([]);
+
+    try {
+      const response = await apiRequest("POST", "/api/profile/update-from-prompt", { prompt });
+      
+      // Check for HTTP errors first
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update your profile. Please try again.");
+      }
+      
+      const result: UpdateProfileResponse = await response.json();
+
+      // Handle missing information
+      if (!result.success || result.needsMoreInfo) {
+        const missingInfo = result.missingFields?.length 
+          ? `Missing: ${result.missingFields.join(", ")}`
+          : result.error || "Please provide more details about what you'd like to change.";
+        
+        toast({
+          title: "Need more details",
+          description: missingInfo,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Success! Show what was updated
+      setUpdatedFields(result.updatedFields || []);
+      setUpdateSuccess(true);
+      
+      // Invalidate queries to reflect updates
+      await queryClient.invalidateQueries({ queryKey: ["/api/home-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      
+      toast({
+        title: "Profile updated!",
+        description: result.message || "Your preferences have been updated successfully.",
+      });
+      
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -411,27 +487,102 @@ export default function AITrainingAssistant() {
     );
   };
 
-  const renderComingSoon = (mode: string) => (
-    <Card className="bg-muted/50">
-      <CardContent className="pt-6 text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
-          <Sparkles className="h-6 w-6 text-primary" />
+  const renderUpdateContent = () => {
+    if (updateSuccess) {
+      return (
+        <div className="space-y-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium mb-2" data-testid="text-update-success">
+                    Profile updated successfully!
+                  </p>
+                  {updatedFields.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground mb-1">Changes made:</p>
+                      <ul className="text-sm space-y-1">
+                        {updatedFields.map((field, idx) => (
+                          <li key={idx} className="flex items-start gap-2" data-testid={`text-updated-field-${idx}`}>
+                            <span className="text-primary mt-0.5">•</span>
+                            <span>{field}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setUpdateSuccess(false);
+              setUpdatedFields([]);
+              setPrompt("");
+            }}
+            className="w-full"
+            data-testid="button-update-another"
+          >
+            Make More Changes
+          </Button>
         </div>
-        <h3 className="font-semibold">Coming Soon</h3>
-        <p className="text-sm text-muted-foreground" data-testid={`text-${mode}-coming-soon`}>
-          Update your preferences and equipment with natural language
-        </p>
-        <div className="pt-2 space-y-1">
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <Textarea
+          placeholder="What would you like to change in your profile?"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          className="text-base resize-none"
+          data-testid="input-update-prompt"
+        />
+
+        <Button
+          onClick={handleUpdateProfile}
+          disabled={isLoading || !prompt.trim()}
+          className="w-full"
+          data-testid="button-update-profile"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <Settings className="h-4 w-4 mr-2" />
+              Update Profile
+            </>
+          )}
+        </Button>
+
+        <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Example prompts:</p>
-          {examplePrompts[mode as keyof typeof examplePrompts].slice(0, 2).map((example, idx) => (
-            <p key={idx} className="text-xs text-muted-foreground italic">
-              "{example}"
-            </p>
-          ))}
+          <div className="grid gap-2">
+            {examplePrompts.update.map((example, idx) => (
+              <Button
+                key={idx}
+                variant="outline"
+                onClick={() => handleExampleClick(example)}
+                className="text-left h-auto whitespace-normal p-3 justify-start text-sm hover-elevate"
+                data-testid={`button-example-update-${idx}`}
+              >
+                <Sparkles className="h-3 w-3 mr-2 flex-shrink-0 text-primary" />
+                {example}
+              </Button>
+            ))}
+          </div>
         </div>
-      </CardContent>
-    </Card>
-  );
+      </div>
+    );
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -491,7 +642,7 @@ export default function AITrainingAssistant() {
               </TabsContent>
 
               <TabsContent value="update" className="mt-0">
-                {renderComingSoon("update")}
+                {renderUpdateContent()}
               </TabsContent>
             </Tabs>
           </CardContent>
