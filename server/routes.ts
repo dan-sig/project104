@@ -46,6 +46,8 @@ import { z } from "zod";
 import { calculateAge } from "@shared/utils";
 import { parseLocalDate, formatLocalDate, isSameCalendarDay, isBeforeCalendarDay, isAfterCalendarDay } from "@shared/dateUtils";
 import { parsePromptToFitnessData, getExamplePrompts } from "./prompt-parser";
+import OpenAI from "openai";
+import { AnalyticsService } from "./analytics-service";
 
 // Guard against duplicate route registration (prevents errors during hot reload)
 let routesRegistered = false;
@@ -1954,6 +1956,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(program || null);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch active program" });
+    }
+  });
+
+  // ==========================================
+  // ANALYTICS & INSIGHTS ROUTES
+  // ==========================================
+  
+  // POST /api/insights/prompt - Generate natural language insights about workout progress
+  // Receives: { prompt: string, level?: "1" | "2" | "3" }
+  // Returns: { success: true, insights: string, metrics: object } or { success: false, error: string }
+  app.post("/api/insights/prompt", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { prompt, level = "2" } = req.body;
+
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ success: false, error: "Prompt is required" });
+      }
+
+      // Validate level
+      if (!["1", "2", "3"].includes(level)) {
+        return res.status(400).json({ success: false, error: "Level must be '1', '2', or '3'" });
+      }
+
+      console.log(`[INSIGHTS] Generating insights for user ${userId}, level ${level}`);
+
+      // Create analytics service instance
+      const analyticsService = new AnalyticsService();
+      
+      let metrics: any;
+      let levelDescription: string;
+
+      try {
+        // Calculate metrics based on level
+        if (level === "1") {
+          // Level 1: Post-workout metrics (need most recent completed session)
+          levelDescription = "post-workout";
+          const sessions = await storage.getUserSessions(userId);
+          const completedSessions = sessions.filter(s => s.status === 'complete');
+          
+          if (completedSessions.length === 0) {
+            return res.status(404).json({ 
+              success: false, 
+              error: "No completed workouts found. Complete a workout first to see post-workout insights." 
+            });
+          }
+
+          // Get most recent completed session
+          const recentSession = completedSessions.sort((a, b) => 
+            new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+          )[0];
+
+          metrics = await analyticsService.calculateLevel1Metrics(userId, recentSession.id);
+        } else if (level === "2") {
+          // Level 2: Weekly metrics (default)
+          levelDescription = "weekly";
+          metrics = await analyticsService.calculateLevel2Metrics(userId);
+        } else {
+          // Level 3: Cycle metrics
+          levelDescription = "cycle";
+          metrics = await analyticsService.calculateLevel3Metrics(userId);
+        }
+      } catch (metricsError) {
+        console.error("[INSIGHTS] Error calculating metrics:", metricsError);
+        return res.status(500).json({ 
+          success: false, 
+          error: `Failed to calculate ${levelDescription} metrics. ${metricsError instanceof Error ? metricsError.message : 'Please try again.'}` 
+        });
+      }
+
+      // Check for OpenAI API key
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables."
+        });
+      }
+
+      // Initialize OpenAI
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // Construct system prompt
+      const systemPrompt = `You are a fitness analytics assistant helping users understand their workout progress. 
+You have access to their workout metrics and should provide helpful, motivating, and actionable insights.
+
+Guidelines:
+- Be encouraging and positive while being honest about the data
+- Provide specific, actionable recommendations based on the metrics
+- Use the actual numbers from the metrics to support your insights
+- Keep responses concise but informative (2-4 paragraphs)
+- If the user asks about something not in the metrics, politely explain what data you have available`;
+
+      // Construct user prompt with metrics
+      const userPrompt = `The user asked: "${prompt}"
+
+Here are their ${levelDescription} workout metrics:
+${JSON.stringify(metrics, null, 2)}
+
+Provide a helpful, motivating response that addresses their question using this data.`;
+
+      // Call OpenAI to generate insights
+      let insights: string;
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        });
+
+        insights = completion.choices[0].message.content || "Unable to generate insights at this time.";
+      } catch (openaiError) {
+        console.error("[INSIGHTS] OpenAI error:", openaiError);
+        return res.status(500).json({ 
+          success: false, 
+          error: "Failed to generate insights. Please try again." 
+        });
+      }
+
+      console.log(`[INSIGHTS] Successfully generated insights for level ${level}`);
+
+      // Transform metrics to match UI expectations
+      let uiMetrics: any = {};
+      
+      if (level === "1") {
+        // Level 1: Post-workout metrics
+        uiMetrics = {
+          totalVolume: metrics.totalVolume,
+          avgRPE: metrics.avgRPE,
+          workDensity: metrics.workDensity,
+          totalSets: metrics.totalSets,
+          avgSessionDuration: metrics.sessionDuration,
+          patternDistribution: metrics.patternDistribution,
+          bestSets: metrics.bestSets,
+        };
+      } else if (level === "2") {
+        // Level 2: Weekly metrics - map to UI field names
+        // Calculate total duration across all sessions (not average)
+        const totalDuration = metrics.avgSessionDuration * metrics.workoutsCompleted;
+        const avgDuration = totalDuration || 1; // Avoid division by zero
+        
+        uiMetrics = {
+          totalSessions: metrics.workoutsCompleted,
+          totalVolume: metrics.totalVolumeThisWeek,
+          avgRPE: metrics.avgRPE,
+          adherencePercent: metrics.adherencePercent,
+          avgWorkDensity: totalDuration > 0 ? metrics.totalVolumeThisWeek / totalDuration : 0, // Volume per minute across all sessions
+          avgSessionDuration: metrics.avgSessionDuration,
+          weeklyTrend: metrics.totalVolumePreviousWeeks,
+          patternBalance: metrics.patternVolumePercent,
+          currentStreak: metrics.currentStreak,
+        };
+      } else {
+        // Level 3: Cycle metrics
+        uiMetrics = {
+          totalSessions: metrics.weeksCompleted * 3, // Approximate
+          totalVolume: metrics.totalWorkCompleted,
+          volumePerMinute: metrics.volumePerMinute,
+          patternBalanceIndex: metrics.patternBalanceIndex,
+          cycleProgressionScore: metrics.cycleProgressionScore,
+          bestLifts: metrics.bestLifts,
+          rpeDistribution: metrics.rpeDistribution,
+          recommendation: metrics.nextPhaseRecommendation,
+        };
+      }
+
+      res.json({
+        success: true,
+        insights,
+        metrics: uiMetrics,
+      });
+    } catch (error) {
+      console.error("[INSIGHTS] Unexpected error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "An unexpected error occurred. Please try again." 
+      });
     }
   });
 

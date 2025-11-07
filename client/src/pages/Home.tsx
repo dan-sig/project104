@@ -42,6 +42,7 @@ import { CycleComplete } from "@/components/CycleComplete";
 import { DayPicker } from "@/components/DayPicker";
 import { WeeklyScheduleView } from "@/components/WeeklyScheduleView";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
+import AITrainingAssistant from "@/components/AITrainingAssistant";
 
 export default function Home() {
   const { toast } = useToast();
@@ -557,6 +558,8 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+
+        <AITrainingAssistant />
 
         {!activeProgram ? (
           <Card>
