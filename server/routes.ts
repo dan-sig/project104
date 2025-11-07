@@ -1372,8 +1372,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user profile with extracted data
       await storage.updateUser(userId, {
         daysPerWeek: parsedData.daysPerWeek,
-        sessionDuration: parsedData.sessionDuration,
-        availableEquipment: parsedData.equipment,
+        workoutDuration: parsedData.sessionDuration,
+        equipment: parsedData.equipment,
         focusCycle: parsedData.focusCycle,
         fitnessLevel: parsedData.experienceLevel,
       });
@@ -1429,18 +1429,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (parsedData.sessionDuration !== undefined) {
-        updateData.sessionDuration = parsedData.sessionDuration;
+        updateData.workoutDuration = parsedData.sessionDuration;
         updatedFields.push(`${parsedData.sessionDuration}-minute workouts`);
       }
       
       if (parsedData.equipment && parsedData.equipment.length > 0) {
-        updateData.availableEquipment = parsedData.equipment;
+        updateData.equipment = parsedData.equipment;
         updatedFields.push(`Equipment: ${parsedData.equipment.join(', ')}`);
       }
       
-      if (parsedData.nutritionGoal) {
-        updateData.nutritionGoal = parsedData.nutritionGoal;
-        updatedFields.push(`Goal: ${parsedData.nutritionGoal}`);
+      if (parsedData.focusCycle) {
+        updateData.focusCycle = parsedData.focusCycle;
+        updatedFields.push(`Focus: Morphit ${parsedData.focusCycle.charAt(0).toUpperCase() + parsedData.focusCycle.slice(1)}`);
       }
       
       if (parsedData.experienceLevel) {
@@ -1535,7 +1535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasPullups: !!latestAssessment.pullups,
         hasBenchPress1RM: !!latestAssessment.benchPress1rm,
         hasSquat1RM: !!latestAssessment.squat1rm,
-        nutritionGoal: user.nutritionGoal,
+        focusCycle: user.focusCycle,
       });
 
       // Calculate selectedDates from user.selectedDates if available (NEW approach)
@@ -1548,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[PROGRAM] No selectedDates in user profile, using legacy selectedDays approach`);
       }
 
-      console.log("[TEMPLATE] Starting program generation with nutrition goal:", user.nutritionGoal);
+      console.log("[TEMPLATE] Starting program generation with focus cycle:", user.focusCycle);
       const generatedProgram = await generateWorkoutProgram({
         user,
         latestAssessment,
@@ -1741,10 +1741,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasPullups: !!latestAssessment.pullups,
         hasBenchPress1RM: !!latestAssessment.benchPress1rm,
         hasSquat1RM: !!latestAssessment.squat1rm,
-        nutritionGoal: user.nutritionGoal,
+        focusCycle: user.focusCycle,
       });
 
-      console.log("[TEMPLATE] Starting program regeneration with nutrition goal:", user.nutritionGoal);
+      console.log("[TEMPLATE] Starting program regeneration with focus cycle:", user.focusCycle);
       const generatedProgram = await generateWorkoutProgram({
         user,
         latestAssessment,
@@ -1887,7 +1887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         experienceLevel, 
         fitnessTest, 
         weightsTest, 
-        nutritionGoal,
+        focusCycle,
         equipment, 
         workoutDuration,
         daysPerWeek,
@@ -1917,7 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         equipment: finalEquipment,
         workoutDuration: workoutDuration || 60,
         daysPerWeek: daysPerWeek || 3,
-        nutritionGoal: nutritionGoal || "maintain",
+        focusCycle: focusCycle || "move",
         unitPreference: unitPreference || "imperial",
         fitnessLevel: experienceLevel || "beginner",
         weight: weight,

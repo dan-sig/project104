@@ -3,7 +3,7 @@ export type ProgramTemplate = {
   name: string;
   description: string;
   selectionCriteria: {
-    nutritionGoals: string[];
+    focusCycles: string[];  // Focus cycles this template supports
     experienceLevels?: string[];
   };
   structure: {
@@ -34,7 +34,7 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
     name: 'Strength Primary',
     description: 'Heavy compound lifts with progressive overload. Cardio included as finisher or optional.',
     selectionCriteria: {
-      nutritionGoals: ['bulk', 'gain', 'muscle', 'strength', 'mass', 'build', 'grow', 'hypertrophy'],
+      focusCycles: ['build', 'strong'],  // Build (hypertrophy) and Strong (strength) cycles
       experienceLevels: ['beginner', 'intermediate', 'advanced'],
     },
     structure: {
@@ -62,7 +62,7 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
     name: 'Cardio Primary',
     description: 'Conditioning and cardiovascular fitness focus. Strength work for maintenance and injury prevention.',
     selectionCriteria: {
-      nutritionGoals: ['lose', 'loss', 'weight', 'fat', 'cut', 'shred', 'lean', 'endurance', 'cardio', 'conditioning'],
+      focusCycles: ['flow'],  // Flow cycle (mobility + stability, lower intensity)
     },
     structure: {
       strengthFocus: 30,
@@ -89,7 +89,7 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
     name: 'Hybrid Balance',
     description: 'Strength-focused training with cardio finishers. Ideal for maintaining fitness and general health.',
     selectionCriteria: {
-      nutritionGoals: ['maintain', 'fitness', 'athletic', 'performance', 'recomp', 'toned', 'general', 'balanced', 'healthy'],
+      focusCycles: ['move'],  // Move cycle (longevity/balanced training)
     },
     structure: {
       strengthFocus: 70,
@@ -114,38 +114,34 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
 ];
 
 /**
- * Select the best program template based on user's nutrition goal and fitness level
+ * Select the best program template based on user's focus cycle
  * 
- * Priority-based selection:
- * 1. Check for primary action keywords (gain/build vs lose/cut)
- * 2. Fall back to hybrid for maintain/general fitness goals
+ * Direct mapping:
+ * - flow → Cardio Primary (mobility + stability focus)
+ * - build → Strength Primary (hypertrophy focus)
+ * - strong → Strength Primary (strength focus)
+ * - move → Hybrid Balance (longevity/balanced)
  */
 export function selectProgramTemplate(
-  nutritionGoal: string | null | undefined,
+  focusCycle: string | null | undefined,
   experienceLevel: string | null | undefined
 ): ProgramTemplate {
-  const normalizedGoal = (nutritionGoal?.toLowerCase() || 'maintain').trim();
+  const normalizedCycle = (focusCycle?.toLowerCase() || 'move').trim();
 
-  // Priority 1: Strength-building goals (highest priority action words)
-  const strengthKeywords = ['gain', 'build', 'bulk', 'grow', 'hypertrophy', 'muscle', 'strength', 'mass'];
-  if (strengthKeywords.some(kw => normalizedGoal.includes(kw))) {
+  // Direct lookup by focus cycle
+  if (normalizedCycle === 'flow') {
+    return PROGRAM_TEMPLATES.find(t => t.id === 'cardio-primary')!;
+  }
+  
+  if (normalizedCycle === 'build' || normalizedCycle === 'strong') {
     return PROGRAM_TEMPLATES.find(t => t.id === 'strength-primary')!;
   }
-
-  // Priority 2: Weight loss / cutting goals (second highest priority)
-  // Use specific loss-oriented terms only
-  const cardioKeywords = ['lose', 'loss', 'cut', 'shred', 'fat loss', 'weight loss', 'drop'];
-  if (cardioKeywords.some(kw => normalizedGoal.includes(kw))) {
-    return PROGRAM_TEMPLATES.find(t => t.id === 'cardio-primary')!;
+  
+  if (normalizedCycle === 'move') {
+    return PROGRAM_TEMPLATES.find(t => t.id === 'hybrid-balance')!;
   }
 
-  // Priority 3: Endurance-focused (cardio template)
-  const enduranceKeywords = ['endurance', 'cardio', 'conditioning', 'run', 'marathon', 'stamina'];
-  if (enduranceKeywords.some(kw => normalizedGoal.includes(kw))) {
-    return PROGRAM_TEMPLATES.find(t => t.id === 'cardio-primary')!;
-  }
-
-  // Default: Hybrid balance for maintain, recomp, general fitness, or unclear goals
+  // Default fallback: Move (balanced/longevity)
   return PROGRAM_TEMPLATES.find(t => t.id === 'hybrid-balance')!;
 }
 

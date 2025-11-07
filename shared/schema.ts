@@ -58,6 +58,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   subscriptionTier: text("subscription_tier").notNull().default("free"),
+  sex: text("sex"),  // "male" or "female" - used for accurate BMR/TDEE calculations
   height: real("height"),
   weight: real("weight"),
   dateOfBirth: timestamp("date_of_birth"),
