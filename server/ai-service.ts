@@ -42,6 +42,9 @@ import {
   type ExperienceLevel
 } from "@shared/constants";
 
+// Import cycle-specific training parameters
+import { getCycleParameters, getExerciseRestPeriod, getSetsAndReps } from "@shared/cycleConstants";
+
 // ==========================================
 // DATA STRUCTURES (TypeScript Interfaces)
 // ==========================================
@@ -430,18 +433,22 @@ function assignTrainingParameters(
 } {
   
   // Power exercises - explosive movements with max intent
+  // Use cycle-specific rest periods, but keep power-specific reps (low reps for explosiveness)
   if (exerciseRole === 'power' || exercise.exerciseCategory === 'power') {
     const powerParams = {
-      beginner: { sets: 2, repsMin: 3, repsMax: 3, restSeconds: 60 },     // 2x3 @ 60s rest
-      intermediate: { sets: 2, repsMin: 2, repsMax: 3, restSeconds: 60 }, // 2x2-3 @ 60s rest  
-      advanced: { sets: 2, repsMin: 1, repsMax: 2, restSeconds: 60 }      // 2x1-2 @ 60s rest
+      beginner: { sets: 2, repsMin: 3, repsMax: 3 },     // 2x3 for beginners
+      intermediate: { sets: 2, repsMin: 2, repsMax: 3 }, // 2x2-3 for intermediate  
+      advanced: { sets: 2, repsMin: 1, repsMax: 2 }      // 2x1-2 for advanced
     };
     
     const params = powerParams[fitnessLevel as keyof typeof powerParams] || powerParams.beginner;
+    const cycleParams = getCycleParameters(user.focusCycle);
+    const powerRestSeconds = getExerciseRestPeriod(user.focusCycle, 'power');
     
     return {
       ...params,
-      tempo: '1-0-X-0', // Explosive concentric, controlled eccentric
+      restSeconds: powerRestSeconds, // Use cycle-specific power rest period
+      tempo: '1-0-X-0', // Explosive concentric (always fast for power work)
       targetRPE: 9, // Max effort, explosive intent
       targetRIR: 0, // All-out power development
     };
@@ -503,49 +510,44 @@ function assignTrainingParameters(
     };
   }
   
-  // Goal-based programming: Sets, reps, and rest based on exercise role (not experience level)
-  let sets: number, repsMin: number, repsMax: number, restSeconds: number;
+  // CYCLE-BASED PROGRAMMING: Apply cycle-specific parameters
+  // All cycles use the same foundational programming (10 movement patterns)
+  // but with different training parameters (tempo, RPE, rest, sets/reps)
+  const cycleParams = getCycleParameters(user.focusCycle);
   
-  switch (exerciseRole) {
-    case 'primary-compound':
-      // Strength focus: Lower reps, 3-4 sets, longer rest
-      sets = fitnessLevel === "beginner" ? 3 : 4;
-      repsMin = 4;
-      repsMax = 6;
-      restSeconds = 180; // 3 minutes for primary compounds
-      break;
-      
-    case 'secondary-compound':
-      // Hypertrophy focus: Moderate reps, 3-4 sets
-      sets = fitnessLevel === "beginner" ? 3 : 4;
-      repsMin = 8;
-      repsMax = 12;
-      restSeconds = 90; // 90s for hypertrophy work
-      break;
-      
-    case 'isolation':
-      // Hypertrophy focus: Higher reps, 2 sets, shorter rest
-      sets = 2;
-      repsMin = 10;
-      repsMax = 15;
-      restSeconds = 60; // 60s for isolation work
-      break;
-      
-    case 'core-accessory':
-      // Endurance focus: Higher reps, fewer sets
-      sets = fitnessLevel === "beginner" ? 2 : 3;
-      repsMin = 12;
-      repsMax = 20;
-      restSeconds = 60; // 45-60s for accessory work
-      break;
-      
-    default:
-      // Fallback to hypertrophy
-      sets = fitnessLevel === "beginner" ? 3 : 4;
-      repsMin = 8;
-      repsMax = 12;
-      restSeconds = 90;
+  // Map exerciseRole to a valid role type for getSetsAndReps
+  let role: 'primary-compound' | 'secondary-compound' | 'isolation' | 'core-accessory';
+  if (exerciseRole === 'primary-compound') {
+    role = 'primary-compound';
+  } else if (exerciseRole === 'secondary-compound') {
+    role = 'secondary-compound';
+  } else if (exerciseRole === 'isolation') {
+    role = 'isolation';
+  } else if (exerciseRole === 'core-accessory') {
+    role = 'core-accessory';
+  } else {
+    // Fallback for warmup/power/cardio (shouldn't hit this path for those)
+    role = 'secondary-compound';
   }
+  
+  const setsReps = getSetsAndReps(user.focusCycle, role, fitnessLevel);
+  
+  // Determine rest period based on exercise type
+  let exerciseType: 'power' | 'compound' | 'isolation' | 'core';
+  if (exerciseRole === 'primary-compound' || exerciseRole === 'secondary-compound') {
+    exerciseType = 'compound';
+  } else if (exerciseRole === 'isolation') {
+    exerciseType = 'isolation';
+  } else if (exerciseRole === 'core-accessory') {
+    exerciseType = 'core';
+  } else {
+    exerciseType = 'compound'; // Fallback
+  }
+  
+  const restSeconds = getExerciseRestPeriod(user.focusCycle, exerciseType);
+  const sets = setsReps.sets;
+  const repsMin = setsReps.repsRange[0];
+  const repsMax = setsReps.repsRange[1];
   
   // Calculate recommended weight based on assessment data
   let recommendedWeight: number | undefined;
@@ -582,35 +584,31 @@ function assignTrainingParameters(
     }
   }
   
-  // Assign tempo - use exercise's recommended tempo if available, otherwise use role-based tempo
+  // Assign tempo - use cycle-specific tempo (unless exercise has specific override)
   let tempo: string;
   if (exercise.recommendedTempo) {
     // Use exercise-specific tempo if defined in database
     tempo = exercise.recommendedTempo;
   } else {
-    // Fall back to role-based tempo
-    switch (exerciseRole) {
-      case 'primary-compound':
-        tempo = '2-1-1-0'; // Controlled eccentric, pause, explosive concentric
-        break;
-      case 'secondary-compound':
-      case 'isolation':
-      case 'core-accessory':
-        tempo = '2-0-2-0'; // Controlled tempo for hypertrophy
-        break;
-      default:
-        tempo = '2-0-2-0'; // Default hypertrophy tempo
-    }
+    // Use cycle-specific tempo from constants
+    tempo = cycleParams.tempo;
   }
 
+  // Use cycle-specific RPE range (take the max value for target)
+  const targetRPE = cycleParams.rpeRange[1];
+  
+  // Calculate RIR (Reps In Reserve) from RPE
+  // RPE 10 = 0 RIR, RPE 9 = 1 RIR, RPE 8 = 2 RIR, etc.
+  const targetRIR = 10 - targetRPE;
+  
   return {
     sets,
     repsMin,
     repsMax,
     restSeconds,
     tempo,
-    targetRPE: template.intensityGuidelines.strengthRPE[fitnessLevel === "beginner" ? 0 : 1],
-    targetRIR: template.intensityGuidelines.strengthRIR[fitnessLevel === "beginner" ? 1 : 0],
+    targetRPE,
+    targetRIR,
     recommendedWeight,
     supersetGroup,
     supersetOrder,
