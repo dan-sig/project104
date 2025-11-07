@@ -27,6 +27,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import IntroSlides from "./IntroSlides";
+import PromptOnboarding from "./PromptOnboarding";
 import QuestionnaireFlow, { type QuestionnaireData } from "./QuestionnaireFlow";
 import NutritionAssessment, { type NutritionData } from "./NutritionAssessment";
 import TestTypeSelector from "./TestTypeSelector";
@@ -37,9 +38,10 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatLocalDate, getTodayLocal } from "@shared/dateUtils";
+import type { FitnessProgramData } from "../../../server/prompt-parser";
 
 // Defines which step of onboarding the user is on
-type AssessmentStep = "intro" | "questionnaire" | "nutrition" | "testSelection" | "fitnessTest" | "weightsTest" | "dateSelection";
+type AssessmentStep = "intro" | "prompt" | "questionnaire" | "nutrition" | "testSelection" | "fitnessTest" | "weightsTest" | "dateSelection";
 
 export default function OnboardingAssessment() {
   // ==========================================
@@ -50,14 +52,18 @@ export default function OnboardingAssessment() {
   const { toast } = useToast();  // Popup notification function
   
   // STATE: Which step is user currently on?
-  // Flow: intro → questionnaire → nutrition → testSelection → fitnessTest/weightsTest → dateSelection
+  // Flow: intro → prompt → (optional testSelection/fitnessTest) → dateSelection
   const [currentStep, setCurrentStep] = useState<AssessmentStep>("intro");
   
-  // STATE: Data collected from questionnaire step
+  // STATE: Data parsed from AI prompt
+  // Includes: daysPerWeek, sessionDuration, equipment, nutritionGoal, experienceLevel
+  const [promptData, setPromptData] = useState<FitnessProgramData | null>(null);
+  
+  // STATE: Data collected from questionnaire step (LEGACY - kept for backwards compatibility)
   // Includes: experience level, equipment, schedule (days/week, duration)
   const [questionnaireData, setQuestionnaireData] = useState<QuestionnaireData | null>(null);
   
-  // STATE: Data collected from nutrition step
+  // STATE: Data collected from nutrition step (LEGACY - kept for backwards compatibility)
   // Includes: height, weight, age, nutrition goal, calculated BMR/TDEE, heart rate zones
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
   
@@ -131,6 +137,23 @@ export default function OnboardingAssessment() {
     setCurrentStep("dateSelection");
   };
 
+  const handlePromptComplete = (parsedData: FitnessProgramData, needsAssessment: boolean) => {
+    console.log('[ONBOARDING] handlePromptComplete called with data:', parsedData, 'needsAssessment:', needsAssessment);
+    
+    // Store the parsed prompt data
+    setPromptData(parsedData);
+    
+    // If AI recommends assessment, go to test selection
+    // Otherwise, skip directly to date selection
+    if (needsAssessment) {
+      setTestType(null); // Clear test type since user will choose
+      setCurrentStep("testSelection");
+    } else {
+      setTestType("skip"); // Mark as skipped when AI doesn't recommend assessment
+      setCurrentStep("dateSelection");
+    }
+  };
+
   const handleSkipTest = () => {
     console.log('[ONBOARDING] handleSkipTest called - user skipped fitness test');
     
@@ -145,19 +168,21 @@ export default function OnboardingAssessment() {
     try {
       // Build complete data with all collected information
       const completeData = {
-        // Questionnaire data
-        experienceLevel: questionnaireData?.experienceLevel,
-        unitPreference: questionnaireData?.unitPreference,
-        equipment: questionnaireData?.equipment || [],
-        workoutDuration: questionnaireData?.availability?.minutesPerSession,
-        daysPerWeek: questionnaireData?.availability?.daysPerWeek,
-        selectedDates: dates,  // NEW: Calendar dates instead of day-of-week
+        // Prompt-based data (NEW approach)
+        experienceLevel: promptData?.experienceLevel || questionnaireData?.experienceLevel,
+        equipment: promptData?.equipment || questionnaireData?.equipment || [],
+        workoutDuration: promptData?.sessionDuration || questionnaireData?.availability?.minutesPerSession,
+        daysPerWeek: promptData?.daysPerWeek || questionnaireData?.availability?.daysPerWeek,
+        nutritionGoal: promptData?.nutritionGoal || nutritionData?.goal,
+        selectedDates: dates,  // Calendar dates for workout scheduling
         
-        // Nutrition data
+        // Legacy questionnaire data (for backwards compatibility)
+        unitPreference: questionnaireData?.unitPreference,
+        
+        // Nutrition data (legacy)
         height: nutritionData?.height,
         weight: nutritionData?.weight,
         dateOfBirth: nutritionData?.dateOfBirth,
-        nutritionGoal: nutritionData?.goal,
         bmr: nutritionData?.bmr,
         tdee: nutritionData?.calories,
         heartRateZones: nutritionData?.heartRateZones,
@@ -211,8 +236,15 @@ export default function OnboardingAssessment() {
         return (
           <IntroSlides
             onComplete={() => {
-              setCurrentStep("questionnaire");
+              setCurrentStep("prompt");
             }}
+          />
+        );
+
+      case "prompt":
+        return (
+          <PromptOnboarding
+            onComplete={handlePromptComplete}
           />
         );
 
@@ -274,15 +306,17 @@ export default function OnboardingAssessment() {
       case "dateSelection":
         return (
           <DayPicker
-            daysPerWeek={questionnaireData?.availability?.daysPerWeek || 3}
+            daysPerWeek={promptData?.daysPerWeek || questionnaireData?.availability?.daysPerWeek || 3}
             onDatesSelected={(dates) => setSelectedDates(dates)}  // Just update state, don't submit
             initialSelectedDates={selectedDates}  // Preserve selections if user goes back
             onBack={() => {
-              // Go back to the appropriate test step
+              // Go back to the appropriate test step or prompt
               if (testType === "bodyweight") {
                 setCurrentStep("fitnessTest");
               } else if (testType === "weights") {
                 setCurrentStep("weightsTest");
+              } else if (testType === "skip") {
+                setCurrentStep("prompt");
               } else {
                 setCurrentStep("testSelection");
               }

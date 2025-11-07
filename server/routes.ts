@@ -45,6 +45,7 @@ import { determineIntensityFromProgramType, calculateCaloriesBurned, poundsToKg 
 import { z } from "zod";
 import { calculateAge } from "@shared/utils";
 import { parseLocalDate, formatLocalDate, isSameCalendarDay, isBeforeCalendarDay, isAfterCalendarDay } from "@shared/dateUtils";
+import { parsePromptToFitnessData, getExamplePrompts } from "./prompt-parser";
 
 // Guard against duplicate route registration (prevents errors during hot reload)
 let routesRegistered = false;
@@ -1342,6 +1343,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Workout Program routes
+  
+  // POST /api/programs/generate-from-prompt - Generate program from natural language prompt
+  // Receives: { prompt: string }
+  // Returns: { parsedData, needsAssessment, needsMoreInfo, missingFields }
+  app.post("/api/programs/generate-from-prompt", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { prompt } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+      
+      console.log("[PROMPT-PARSE] Parsing user prompt:", prompt);
+      
+      // Parse the prompt using OpenAI
+      const parseResult = await parsePromptToFitnessData(prompt);
+      
+      if (!parseResult.success) {
+        return res.json({
+          success: false,
+          error: parseResult.error,
+          missingFields: parseResult.missingFields,
+          needsMoreInfo: true,
+        });
+      }
+      
+      const parsedData = parseResult.data!;
+      console.log("[PROMPT-PARSE] Successfully extracted data:", parsedData);
+      
+      // Update user profile with extracted data
+      await storage.updateUser(userId, {
+        daysPerWeek: parsedData.daysPerWeek,
+        sessionDuration: parsedData.sessionDuration,
+        availableEquipment: parsedData.equipment,
+        nutritionGoal: parsedData.nutritionGoal,
+        fitnessLevel: parsedData.experienceLevel,
+      });
+      
+      res.json({
+        success: true,
+        parsedData,
+        needsAssessment: parsedData.wantsAssessment,
+        needsMoreInfo: false,
+      });
+    } catch (error) {
+      console.error("[PROMPT-PARSE] Error:", error);
+      res.status(500).json({ error: "Failed to parse your fitness goals. Please try rephrasing." });
+    }
+  });
+  
+  // GET /api/programs/example-prompts - Get example prompts for user guidance
+  app.get("/api/programs/example-prompts", (req: Request, res: Response) => {
+    res.json({ examples: getExamplePrompts() });
+  });
+  
   app.post("/api/programs/generate", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
