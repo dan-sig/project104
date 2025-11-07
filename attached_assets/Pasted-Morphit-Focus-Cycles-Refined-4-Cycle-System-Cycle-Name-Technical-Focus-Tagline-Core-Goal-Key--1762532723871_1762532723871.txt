@@ -1,0 +1,492 @@
+Morphit Focus Cycles (Refined 4-Cycle System)
+
+Cycle Name
+
+Technical Focus
+
+Tagline
+
+Core Goal
+
+Key Traits
+
+Morphit Flow
+
+Mobility + Stability
+
+“Move freely, control completely.”
+
+Restore range, coordination, and end-range control
+
+Slow tempo, low RPE (5–6), longer eccentrics (3-1-3 / 4-1-2)
+
+Morphit Build
+
+Hypertrophy
+
+“Shape, strengthen, solidify.”
+
+Increase lean muscle and volume tolerance
+
+Moderate RPE (7–8), 8–15 reps, short rest (60–90s)
+
+Morphit Strong
+
+Strength
+
+“Power through precision.”
+
+Maximize force production and neural drive
+
+High RPE (8–9), 4–8 reps, long rest (120–150s)
+
+Morphit Move
+
+Longevity / Balanced
+
+“Train for life, not just today.”
+
+Maintain long-term performance and health
+
+Moderate RPE (7), balanced rep scheme (6–12), mixed tempo
+
+⚙️ 
+
+Updated Microcycle Logic (Applies to All 4 Cycles)
+
+Week
+
+Theme
+
+Volume
+
+RPE / RIR
+
+Notes
+
+1
+
+Learn
+
+Base
+
+RPE 6 / RIR 4
+
+Focus on technique and setup
+
+2
+
+Load
+
++5–10 %
+
+RPE 7 / RIR 3
+
+Add slight load or volume
+
+3
+
+Push
+
+Peak
+
+RPE 8 / RIR 2
+
+Max intent, maintain form
+
+4
+
+Deload
+
+−30–40 %
+
+RPE 6 / RIR 4
+
+Reduce fatigue, restore readiness
+
+ 
+
+New “Focus Cycle Logic” Table (Simplified to 4 Cycles)
+
+Focus (Cycle)
+
+Week
+
+Theme
+
+Power (Sets×Reps)
+
+Compound (Sets×Reps)
+
+Isolation (Sets×Reps)
+
+Tempo
+
+RPE
+
+RIR
+
+Rest (sec)
+
+Notes
+
+Flow
+
+1
+
+Learn
+
+2×10
+
+2×12
+
+2×15
+
+4-1-2
+
+5
+
+5
+
+45
+
+Fluid motion, breathing focus
+
+2
+
+Load
+
+3×8
+
+3×10
+
+2×12
+
+3-1-2
+
+6
+
+4
+
+45–60
+
+Add mild load or offset
+
+3
+
+Push
+
+3×8
+
+3×8
+
+2×10
+
+2-1-2
+
+7
+
+3
+
+45
+
+End-range control, steady tempo
+
+4
+
+Deload
+
+2×10
+
+2×12
+
+2×15
+
+3-1-3
+
+5
+
+5
+
+60
+
+Reset pattern, easy flow
+
+Build
+
+1
+
+Learn
+
+3×8
+
+3×10–12
+
+2×15
+
+3-1-2
+
+6
+
+4
+
+60
+
+Controlled eccentric, pump focus
+
+2
+
+Load
+
+3×8
+
+4×10
+
+3×12
+
+2-1-1
+
+7
+
+3
+
+60–90
+
+Add load, maintain rhythm
+
+3
+
+Push
+
+3×6–8
+
+4×8–10
+
+3×10
+
+2-0-X
+
+8
+
+2
+
+60
+
+Peak tension, minimal rest
+
+4
+
+Deload
+
+2×10
+
+2×10–12
+
+2×12–15
+
+3-1-1
+
+6
+
+4
+
+90
+
+Reduce fatigue, keep feel
+
+Strong
+
+1
+
+Learn
+
+3×5
+
+3×6
+
+2×10
+
+3-1-1
+
+6
+
+4
+
+120
+
+Submaximal, technical precision
+
+2
+
+Load
+
+4×5
+
+4×6
+
+3×8
+
+2-1-1
+
+7
+
+3
+
+120–150
+
+Progressive overload
+
+3
+
+Push
+
+5×4
+
+5×5
+
+3×6
+
+2-0-X
+
+8
+
+2
+
+150
+
+Peak neural intensity
+
+4
+
+Deload
+
+2×5
+
+2×5
+
+2×10
+
+3-1-1
+
+6
+
+4
+
+90
+
+Low stress, fast recovery
+
+Move
+
+1
+
+Learn
+
+3×10
+
+3×10
+
+3×12
+
+3-1-1
+
+6
+
+4
+
+60
+
+Baseline Morphit default
+
+2
+
+Load
+
+3×8
+
+4×8
+
+3×10
+
+2-1-1
+
+7
+
+3
+
+60–90
+
+Add intent or load
+
+3
+
+Push
+
+3×6
+
+4×6
+
+3×8
+
+2-0-X
+
+8
+
+2
+
+60
+
+Power focus, maintain control
+
+4
+
+Deload
+
+2×10
+
+2×10
+
+2×10
+
+3-1-1
+
+6
+
+4
+
+90
+
+Smooth deload, quality movement
+
+ UI Color Themes
+
+Cycle
+
+Primary Color
+
+Emotion
+
+Flow
+
+Light Blue / Teal
+
+Calm, restorative
+
+Build
+
+Orange
+
+Growth, energy
+
+Strong
+
+Slate Gray / Red
+
+Power, grit
+
+Move
+
+Blue–Orange Gradient
+
+Balance, longevity
+
