@@ -46,6 +46,7 @@ import { z } from "zod";
 import { calculateAge } from "@shared/utils";
 import { parseLocalDate, formatLocalDate, isSameCalendarDay, isBeforeCalendarDay, isAfterCalendarDay } from "@shared/dateUtils";
 import { parsePromptToFitnessData, getExamplePrompts } from "./prompt-parser";
+import { getWeekTheme } from "@shared/cycleConstants";
 import OpenAI from "openai";
 import { AnalyticsService } from "./analytics-service";
 
@@ -94,6 +95,10 @@ async function generateWorkoutSchedule(
     const cleanupResult = await storage.cleanupSessionsForRegeneration(userId, startDateString);
     console.log(`[SESSION-CLEANUP] Archived ${cleanupResult.archived} completed sessions, deleted ${cleanupResult.deleted} incomplete sessions`);
     
+    // Fetch user to get currentWeekInCycle for weekTheme
+    const user = await storage.getUser(userId);
+    const weekTheme = user?.currentWeekInCycle ? getWeekTheme(user.currentWeekInCycle) : 'Learn';
+    
     const sessions = [];
     
     // ==========================================
@@ -126,6 +131,7 @@ async function generateWorkoutSchedule(
             sessionDayOfWeek: schemaDayOfWeek,
             sessionType: (workout.workoutType ? 'workout' : 'rest') as 'workout' | 'rest',
             workoutType: workout.workoutType as 'strength' | 'cardio' | 'hiit' | 'mobility' | undefined,
+            weekTheme,
             status: "scheduled" as const,
           });
         }
@@ -180,6 +186,7 @@ async function generateWorkoutSchedule(
             sessionDayOfWeek: schemaDayOfWeek,
             sessionType: (programWorkout.workoutType ? 'workout' : 'rest') as 'workout' | 'rest',
             workoutType: programWorkout.workoutType as 'strength' | 'cardio' | 'hiit' | 'mobility' | undefined,
+            weekTheme,
             status: "scheduled" as const,
           });
         }
@@ -298,6 +305,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (experienceLevel) {
         profileData.fitnessLevel = experienceLevel;
       }
+      
+      // Reset week and cycle tracking for new program
+      profileData.currentWeekInCycle = 1;  // Always start at Week 1 (Learn)
+      profileData.cycleNumber = 1;          // Reset cycle counter
       
       // Update user profile with onboarding data
       if (Object.keys(profileData).length > 0) {
@@ -1688,6 +1699,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { startDate, selectedDates } = req.body;
       console.log("[REGENERATE] Received request with selectedDates:", selectedDates, "length:", selectedDates?.length);
+      
+      // CRITICAL: Advance week BEFORE AI generation so workouts get correct week parameters
+      if (selectedDates && Array.isArray(selectedDates) && selectedDates.length > 0) {
+        const currentUser = await storage.getUser(userId);
+        if (!currentUser) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        
+        const isRepeatCycle = currentUser?.selectedDates && currentUser.selectedDates.length > 0;
+        const updateData: any = { selectedDates };
+        
+        if (isRepeatCycle) {
+          // User is repeating the cycle - advance to next week and increment cycle number
+          const newCycleNumber = (currentUser.cycleNumber || 0) + 1;
+          const newWeekInCycle = ((currentUser.currentWeekInCycle || 1) % 4) + 1; // 1→2→3→4→1
+          
+          updateData.cycleNumber = newCycleNumber;
+          updateData.currentWeekInCycle = newWeekInCycle;
+          
+          console.log(`[WEEK-PROGRESSION] User advancing from Week ${currentUser.currentWeekInCycle} to Week ${newWeekInCycle}, Cycle ${newCycleNumber}`);
+        }
+        
+        await storage.updateUser(userId, updateData);
+        console.log(`[REGENERATE] Saved selectedDates for new 7-day cycle:`, selectedDates);
+      }
+      
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -1843,12 +1880,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           createdProgramWorkouts.push(restDay);
         }
-      }
-
-      // Save selectedDates to user profile if provided (for new 7-day cycle system)
-      if (selectedDates && Array.isArray(selectedDates) && selectedDates.length > 0) {
-        await storage.updateUser(userId, { selectedDates });
-        console.log(`[REGENERATE] Saved selectedDates for new 7-day cycle:`, selectedDates);
       }
 
       // Clean up sessions from TODAY onwards only (never touch historical sessions)

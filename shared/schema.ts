@@ -65,6 +65,7 @@ export const users = pgTable("users", {
   bmr: integer("bmr"),
   targetCalories: integer("target_calories"),
   focusCycle: text("focus_cycle"),  // Morphit Focus Cycle: flow, build, strong, move
+  currentWeekInCycle: integer("current_week_in_cycle").notNull().default(1),  // Current week in 4-week microcycle (1-4): Learn, Load, Push, Deload
   unitPreference: text("unit_preference").notNull().default("imperial"),
   equipment: text("equipment").array(),
   workoutDuration: integer("workout_duration"),
@@ -287,6 +288,7 @@ export const workoutSessions = pgTable("workout_sessions", {
   sessionDayOfWeek: integer("session_day_of_week"),
   sessionType: text("session_type").notNull().default("rest"),
   workoutType: text("workout_type"),
+  weekTheme: text("week_theme"),  // Week theme in 4-week cycle: Learn, Load, Push, Deload
   status: text("status").notNull().default("scheduled"), // scheduled → in_progress → partial/complete
   durationMinutes: integer("duration_minutes"),
   elapsedSeconds: integer("elapsed_seconds"), // Tracks timer state for partial workouts

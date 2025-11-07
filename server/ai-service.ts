@@ -43,7 +43,15 @@ import {
 } from "@shared/constants";
 
 // Import cycle-specific training parameters
-import { getCycleParameters, getExerciseRestPeriod, getSetsAndReps } from "@shared/cycleConstants";
+import { 
+  getCycleParameters, 
+  getExerciseRestPeriod, 
+  getSetsAndReps, 
+  getTempo, 
+  getRPE, 
+  getRIR, 
+  getWeekParameters 
+} from "@shared/cycleConstants";
 
 // ==========================================
 // DATA STRUCTURES (TypeScript Interfaces)
@@ -443,7 +451,7 @@ function assignTrainingParameters(
     
     const params = powerParams[fitnessLevel as keyof typeof powerParams] || powerParams.beginner;
     const cycleParams = getCycleParameters(user.focusCycle);
-    const powerRestSeconds = getExerciseRestPeriod(user.focusCycle, 'power');
+    const powerRestSeconds = getExerciseRestPeriod(user.focusCycle, user.currentWeekInCycle, 'power');
     
     return {
       ...params,
@@ -510,29 +518,12 @@ function assignTrainingParameters(
     };
   }
   
-  // CYCLE-BASED PROGRAMMING: Apply cycle-specific parameters
+  // CYCLE-BASED PROGRAMMING: Apply week-specific parameters
   // All cycles use the same foundational programming (10 movement patterns)
-  // but with different training parameters (tempo, RPE, rest, sets/reps)
-  const cycleParams = getCycleParameters(user.focusCycle);
+  // but with different training parameters (tempo, RPE, rest, sets/reps) per week
+  const weekParams = getWeekParameters(user.focusCycle, user.currentWeekInCycle);
   
-  // Map exerciseRole to a valid role type for getSetsAndReps
-  let role: 'primary-compound' | 'secondary-compound' | 'isolation' | 'core-accessory';
-  if (exerciseRole === 'primary-compound') {
-    role = 'primary-compound';
-  } else if (exerciseRole === 'secondary-compound') {
-    role = 'secondary-compound';
-  } else if (exerciseRole === 'isolation') {
-    role = 'isolation';
-  } else if (exerciseRole === 'core-accessory') {
-    role = 'core-accessory';
-  } else {
-    // Fallback for warmup/power/cardio (shouldn't hit this path for those)
-    role = 'secondary-compound';
-  }
-  
-  const setsReps = getSetsAndReps(user.focusCycle, role, fitnessLevel);
-  
-  // Determine rest period based on exercise type
+  // Map exerciseRole to exercise type for parameter lookups
   let exerciseType: 'power' | 'compound' | 'isolation' | 'core';
   if (exerciseRole === 'primary-compound' || exerciseRole === 'secondary-compound') {
     exerciseType = 'compound';
@@ -544,7 +535,16 @@ function assignTrainingParameters(
     exerciseType = 'compound'; // Fallback
   }
   
-  const restSeconds = getExerciseRestPeriod(user.focusCycle, exerciseType);
+  // Get sets/reps from week-specific parameters
+  let setsReps: { sets: number; repsRange: [number, number] };
+  if (exerciseType === 'core') {
+    // Core exercises use moderate volume across all cycles
+    setsReps = { sets: 2, repsRange: [15, 20] };
+  } else {
+    setsReps = getSetsAndReps(user.focusCycle, user.currentWeekInCycle, exerciseType);
+  }
+  
+  const restSeconds = getExerciseRestPeriod(user.focusCycle, user.currentWeekInCycle, exerciseType);
   const sets = setsReps.sets;
   const repsMin = setsReps.repsRange[0];
   const repsMax = setsReps.repsRange[1];
@@ -584,22 +584,19 @@ function assignTrainingParameters(
     }
   }
   
-  // Assign tempo - use cycle-specific tempo (unless exercise has specific override)
+  // Assign tempo - use week-specific tempo (unless exercise has specific override)
   let tempo: string;
   if (exercise.recommendedTempo) {
     // Use exercise-specific tempo if defined in database
     tempo = exercise.recommendedTempo;
   } else {
-    // Use cycle-specific tempo from constants
-    tempo = cycleParams.tempo;
+    // Use week-specific tempo from cycle constants
+    tempo = getTempo(user.focusCycle, user.currentWeekInCycle);
   }
 
-  // Use cycle-specific RPE range (take the max value for target)
-  const targetRPE = cycleParams.rpeRange[1];
-  
-  // Calculate RIR (Reps In Reserve) from RPE
-  // RPE 10 = 0 RIR, RPE 9 = 1 RIR, RPE 8 = 2 RIR, etc.
-  const targetRIR = 10 - targetRPE;
+  // Use week-specific RPE and RIR
+  const targetRPE = getRPE(user.focusCycle, user.currentWeekInCycle);
+  const targetRIR = getRIR(user.focusCycle, user.currentWeekInCycle);
   
   return {
     sets,

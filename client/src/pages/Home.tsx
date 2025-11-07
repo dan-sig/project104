@@ -43,6 +43,7 @@ import { DayPicker } from "@/components/DayPicker";
 import { WeeklyScheduleView } from "@/components/WeeklyScheduleView";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
 import AITrainingAssistant from "@/components/AITrainingAssistant";
+import { CYCLE_INFO, getWeekTheme } from "@shared/cycleConstants";
 
 export default function Home() {
   const { toast } = useToast();
@@ -546,11 +547,23 @@ export default function Home() {
                 year: 'numeric'
               })}
             </p>
-            {user && user.cycleNumber !== null && user.cycleNumber > 0 && (
-              <Badge variant="secondary" className="mt-2" data-testid="badge-cycle-progress">
-                Cycle {user.cycleNumber} • {user.totalWorkoutsCompleted} Workouts Completed
-              </Badge>
-            )}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {user?.focusCycle && (
+                <Badge variant="default" data-testid="badge-focus-cycle">
+                  {CYCLE_INFO[user.focusCycle as keyof typeof CYCLE_INFO]?.name || 'Morphit Move'}
+                </Badge>
+              )}
+              {user && user.currentWeekInCycle && (
+                <Badge variant="secondary" data-testid="badge-week-theme">
+                  Week {user.currentWeekInCycle}: {getWeekTheme(user.currentWeekInCycle)}
+                </Badge>
+              )}
+              {user && user.cycleNumber !== null && user.cycleNumber > 0 && (
+                <Badge variant="outline" data-testid="badge-cycle-progress">
+                  Cycle {user.cycleNumber} • {user.totalWorkoutsCompleted} Workouts
+                </Badge>
+              )}
+            </div>
           </div>
           <Link href="/settings">
             <Button variant="ghost" size="icon" data-testid="button-settings">
