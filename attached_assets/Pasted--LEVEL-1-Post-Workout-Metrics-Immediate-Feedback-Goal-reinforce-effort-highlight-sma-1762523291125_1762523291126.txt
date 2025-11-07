@@ -1,0 +1,139 @@
+
+
+🏋️‍♂️ LEVEL 1 — Post-Workout Metrics (Immediate Feedback)
+
+
+Goal: reinforce effort, highlight small wins, and visualize training quality.
+Category
+Metric
+Description / Formula
+Why it Matters
+Volume
+Total Training Volume
+∑ (Sets × Reps × Load)
+Shows total work completed; intuitive progress indicator.
+Intensity
+Avg RPE / RIR
+Mean of RPE values across main lifts
+Reflects perceived effort and recovery readiness.
+Density
+Work / Time
+Total volume ÷ session duration
+Captures efficiency (improving conditioning or time management).
+Tempo Consistency
+
+
+.
+Movement Balance
+Pattern Distribution
+% of time or volume by pattern (Push, Pull, Hinge, Squat, Core, Carry)
+Ensures balanced movement patterns.
+Performance Highlight
+Best Set / New Record
+Auto-detect PRs (load, reps, or volume)
+Instant dopamine hit; drives engagement.
+Recovery Readiness Prompt
+Subjective Fatigue (1-5) + HR / HRV delta(future)
+Quick post-session rating
+Feeds weekly recovery algorithm.
+UI Example:
+🟢 “You moved 14,800 lbs across 5 patterns — 12% more than last week!”
+🔥 “New volume PR on DB Row!”
+💬 “Session RPE: 7.3 — great effort within target range.”
+
+
+
+
+📆 LEVEL 2 — Weekly Metrics (Progress & Consistency)
+
+
+Goal: track consistency, cumulative load, and balance; highlight readiness for deload or push weeks.
+Category
+Metric
+Description
+Visualization Idea
+Consistency
+Workouts Completed / Planned
+% adherence (e.g., 4/4 days = 100%)
+Circular completion ring
+Total Volume Trend
+∑ weekly volume
+Bar or line chart vs. past 3–4 weeks
+See progressive overload
+Average RPE/RIR
+Weekly mean
+Gauge if intensity stayed in target zone
+Heat map or trend line
+Movement Balance
+Pattern volume %
+Push/Pull/Hinge/Squat/Core
+Radar chart or stacked bar
+Time in Zone
+Minutes by RPE zone (5–9)
+Intensity distribution
+Colored histogram
+Conditioning Time
+Minutes in HR zone 2–3 (if tracked)
+For longevity & recovery
+Time-in-zone gauge
+Readiness
+Rolling average HRV / Subjective recovery
+Detect fatigue accumulation
+Color-coded readiness indicator
+Completion Streak
+Consecutive weeks completed
+Gamified streak metric
+Flame or badge
+Example UX copy:
+
+“You completed 4/4 workouts. Total volume ↑ 9%. Average RPE 7.1 — perfect Load week intensity.”
+
+
+
+
+🔁 LEVEL 3 — End-of-Phase / Cycle (Every 4 Weeks)
+
+
+Goal: celebrate transformation and readiness for next phase.
+Category
+Metric
+Description
+Why it Matters
+Total Work Completed
+Sum of all session volumes
+Quantifies effort across cycle
+
+Cycle Progression Score
+Composite: volume + consistency + intensity + balance (0–100)
+Single motivational KPI
+
+Movement Efficiency
+Volume per minute or per session
+Shows improved work capacity
+
+Pattern Balance Index
+(Min / Max pattern volume %) × 100
+Highlights symmetry (100 = perfectly balanced)
+
+RPE Distribution Curve
+Hist of all sessions
+Shows recovery & effort pacing
+
+Mobility / Stability Trend
+ROM or tempo control improvements (if tracked)
+Visualize movement quality, not just load
+
+Recovery Trend
+HRV ↑, Resting HR ↓, Sleep ↑
+Reinforces longevity outcomes
+
+Best Lifts / Highlights
+Top 3 PRs or milestones
+Celebrate tangible progress
+
+Next-Cycle Recommendation
+“Switch from Build → Strong” or “Stay Flow to recover”
+Intelligent progression suggestion
+
+UI example:
+📈 “Cycle Summary: +14% total volume, RPE stable at 7.2, Pattern Balance 94%. You’re ready for Push Phase 2 — Strongi
