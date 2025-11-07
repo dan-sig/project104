@@ -33,6 +33,11 @@ interface UpdateProfileResponse {
   updatedFields?: string[];
   message?: string;
   needsMoreInfo?: boolean;
+  needsConfirmation?: boolean;
+  confirmationMessage?: string;
+  parsedChanges?: string[];
+  updateData?: any;
+  currentSettings?: any;
   missingFields?: string[];
   error?: string;
 }
@@ -47,6 +52,7 @@ export default function AITrainingAssistant() {
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updatedFields, setUpdatedFields] = useState<string[]>([]);
   const [confirmationData, setConfirmationData] = useState<{ message: string; settings: any; parsedData: any } | null>(null);
+  const [updateConfirmationData, setUpdateConfirmationData] = useState<{ message: string; parsedChanges: string[]; updateData: any } | null>(null);
   const { toast } = useToast();
 
   const examplePrompts = {
@@ -206,22 +212,27 @@ export default function AITrainingAssistant() {
     }
   };
 
-  const handleUpdateProfile = async () => {
-    if (!prompt.trim()) {
+  const handleUpdateProfile = async (confirmed = false, skipLoadingControl = false): Promise<boolean> => {
+    if (!prompt.trim() && !confirmed) {
       toast({
         title: "Prompt required",
         description: "Please describe what you'd like to change in your profile.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
-    setIsLoading(true);
+    if (!skipLoadingControl) {
+      setIsLoading(true);
+    }
     setUpdateSuccess(false);
     setUpdatedFields([]);
 
     try {
-      const response = await apiRequest("POST", "/api/profile/update-from-prompt", { prompt });
+      const response = await apiRequest("POST", "/api/profile/update-from-prompt", { 
+        prompt: prompt.trim(),
+        confirmed 
+      });
       
       // Check for HTTP errors first
       if (!response.ok) {
@@ -230,6 +241,19 @@ export default function AITrainingAssistant() {
       }
       
       const result: UpdateProfileResponse = await response.json();
+
+      // Handle confirmation request
+      if (result.needsConfirmation && result.confirmationMessage) {
+        setUpdateConfirmationData({
+          message: result.confirmationMessage,
+          parsedChanges: result.parsedChanges || [],
+          updateData: result.updateData || {},
+        });
+        if (!skipLoadingControl) {
+          setIsLoading(false);
+        }
+        return false;
+      }
 
       // Handle missing information
       if (!result.success || result.needsMoreInfo) {
@@ -242,28 +266,95 @@ export default function AITrainingAssistant() {
           description: missingInfo,
           variant: "destructive",
         });
-        setIsLoading(false);
-        return;
+        if (!skipLoadingControl) {
+          setIsLoading(false);
+        }
+        return false;
       }
 
       // Success! Show what was updated
       setUpdatedFields(result.updatedFields || []);
       setUpdateSuccess(true);
+      setUpdateConfirmationData(null);
       
       // Invalidate queries to reflect updates
       await queryClient.invalidateQueries({ queryKey: ["/api/home-data"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
       
-      toast({
-        title: "Profile updated!",
-        description: result.message || "Your preferences have been updated successfully.",
-      });
+      // Only show toast and clear loading if not in chained flow
+      if (!skipLoadingControl) {
+        toast({
+          title: "Profile updated!",
+          description: result.message || "Your preferences have been updated successfully.",
+        });
+        setIsLoading(false);
+      }
+
+      return true;
       
     } catch (error) {
       console.error("Failed to update profile:", error);
+      if (!skipLoadingControl) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        });
+        setIsLoading(false);
+      }
+      return false;
+    }
+  };
+
+  const handleAcceptChangesAndGenerate = async () => {
+    if (!updateConfirmationData) return;
+
+    setIsLoading(true);
+
+    try {
+      // Step 1: Apply the confirmed profile changes (skip loading control - we manage it here)
+      const updateSuccess = await handleUpdateProfile(true, true);
+      
+      // Only proceed if update was successful
+      if (!updateSuccess) {
+        console.error("Profile update failed, aborting program generation");
+        toast({
+          title: "Update failed",
+          description: "Unable to save your profile changes. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 2: Generate the program with updated profile
+      const generateResponse = await apiRequest("POST", "/api/programs/generate", {});
+      
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to generate program");
+      }
+
+      const generateResult = await generateResponse.json();
+
+      // Success! Invalidate queries and show success
+      await queryClient.invalidateQueries({ queryKey: ["/api/home-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/program-workouts"] });
+      
+      setUpdateConfirmationData(null);
+      setConfirmationData(null);
+      setUpdateSuccess(false);
+      setGenerateSuccess(true);
+      setActiveTab("generate");
+      
+      toast({
+        title: "Program created!",
+        description: "Your profile has been updated and a new program has been generated.",
+      });
+      
+    } catch (error) {
+      console.error("Failed to update and generate:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update profile and generate program. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -492,7 +583,8 @@ export default function AITrainingAssistant() {
                     variant="outline"
                     onClick={() => {
                       setConfirmationData(null);
-                      setPrompt("");
+                      setPrompt("I want to update my settings");
+                      setActiveTab("update");
                     }}
                     disabled={isLoading}
                     className="flex-1"
@@ -605,6 +697,61 @@ export default function AITrainingAssistant() {
       );
     }
 
+    if (updateConfirmationData) {
+      return (
+        <div className="space-y-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Brain className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium mb-2">Confirm Your Changes</p>
+                    <p className="text-sm text-muted-foreground" data-testid="text-update-confirmation-message">
+                      {updateConfirmationData.message}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAcceptChangesAndGenerate}
+                    disabled={isLoading}
+                    className="flex-1"
+                    data-testid="button-accept-and-generate"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating & Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Accept & Generate
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setUpdateConfirmationData(null);
+                      setPrompt("");
+                    }}
+                    disabled={isLoading}
+                    className="flex-1"
+                    data-testid="button-cancel-update"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <Textarea
@@ -617,7 +764,7 @@ export default function AITrainingAssistant() {
         />
 
         <Button
-          onClick={handleUpdateProfile}
+          onClick={() => handleUpdateProfile(false)}
           disabled={isLoading || !prompt.trim()}
           className="w-full"
           data-testid="button-update-profile"

@@ -1427,18 +1427,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/profile/update-from-prompt - Update user profile from natural language without regenerating program
-  // Receives: { prompt: string }
-  // Returns: { success, updatedFields, message }
+  // Receives: { prompt: string, confirmed?: boolean }
+  // Returns: { success, updatedFields, message } or { needsConfirmation, confirmationMessage, parsedChanges, currentSettings }
   app.post("/api/profile/update-from-prompt", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { prompt } = req.body;
+      const { prompt, confirmed = false } = req.body;
       
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: "Prompt is required" });
       }
       
-      console.log("[PROFILE-UPDATE] Parsing user prompt:", prompt);
+      console.log("[PROFILE-UPDATE] Parsing user prompt:", prompt, "confirmed:", confirmed);
+      
+      // Get current user settings
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
       
       // Parse the prompt using OpenAI
       const parseResult = await parsePromptToFitnessData(prompt);
@@ -1458,36 +1464,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build update object with only the fields that were specified
       const updateData: any = {};
       const updatedFields: string[] = [];
+      const changedFields: string[] = [];
       
       if (parsedData.daysPerWeek !== undefined) {
         updateData.daysPerWeek = parsedData.daysPerWeek;
-        updatedFields.push(`Training ${parsedData.daysPerWeek} days per week`);
+        updatedFields.push(`${parsedData.daysPerWeek} workout days per week`);
+        if (parsedData.daysPerWeek !== currentUser.daysPerWeek) {
+          changedFields.push(`days per week from ${currentUser.daysPerWeek || 'unset'} to ${parsedData.daysPerWeek}`);
+        }
       }
       
       if (parsedData.sessionDuration !== undefined) {
         updateData.workoutDuration = parsedData.sessionDuration;
-        updatedFields.push(`${parsedData.sessionDuration}-minute workouts`);
+        updatedFields.push(`${parsedData.sessionDuration}-minute sessions`);
+        if (parsedData.sessionDuration !== currentUser.workoutDuration) {
+          changedFields.push(`session duration from ${currentUser.workoutDuration || 'unset'} to ${parsedData.sessionDuration} minutes`);
+        }
       }
       
       if (parsedData.equipment && parsedData.equipment.length > 0) {
         updateData.equipment = parsedData.equipment;
         updatedFields.push(`Equipment: ${parsedData.equipment.join(', ')}`);
+        const currentEq = currentUser.equipment?.sort().join(', ') || 'none';
+        const newEq = parsedData.equipment.sort().join(', ');
+        if (currentEq !== newEq) {
+          changedFields.push(`equipment from ${currentEq} to ${newEq}`);
+        }
       }
       
       if (parsedData.focusCycle) {
         updateData.focusCycle = parsedData.focusCycle;
-        updatedFields.push(`Focus: Morphit ${parsedData.focusCycle.charAt(0).toUpperCase() + parsedData.focusCycle.slice(1)}`);
+        const cycleName = parsedData.focusCycle.charAt(0).toUpperCase() + parsedData.focusCycle.slice(1);
+        updatedFields.push(`Focus: Morphit ${cycleName}`);
+        if (parsedData.focusCycle !== currentUser.focusCycle) {
+          const currentCycle = currentUser.focusCycle ? currentUser.focusCycle.charAt(0).toUpperCase() + currentUser.focusCycle.slice(1) : 'unset';
+          changedFields.push(`focus cycle from ${currentCycle} to ${cycleName}`);
+        }
       }
       
       if (parsedData.experienceLevel) {
         updateData.fitnessLevel = parsedData.experienceLevel;
         updatedFields.push(`Experience: ${parsedData.experienceLevel}`);
+        if (parsedData.experienceLevel !== currentUser.fitnessLevel) {
+          changedFields.push(`experience level from ${currentUser.fitnessLevel || 'unset'} to ${parsedData.experienceLevel}`);
+        }
       }
       
-      // Update user profile
-      if (Object.keys(updateData).length > 0) {
-        await storage.updateUser(userId, updateData);
+      // If no fields to update
+      if (Object.keys(updateData).length === 0) {
+        return res.json({
+          success: false,
+          error: "No changes detected in your request",
+          needsMoreInfo: true,
+        });
       }
+      
+      // If not confirmed yet, return confirmation request
+      if (!confirmed) {
+        console.log("[PROFILE-UPDATE] Requesting confirmation for changes:", changedFields);
+        
+        // Build unchanged fields list for context
+        const unchangedFields: string[] = [];
+        if (parsedData.daysPerWeek === undefined && currentUser.daysPerWeek) {
+          unchangedFields.push(`${currentUser.daysPerWeek} days per week`);
+        }
+        if (parsedData.sessionDuration === undefined && currentUser.workoutDuration) {
+          unchangedFields.push(`${currentUser.workoutDuration}-minute sessions`);
+        }
+        if ((!parsedData.equipment || parsedData.equipment.length === 0) && currentUser.equipment?.length) {
+          unchangedFields.push(`${currentUser.equipment.join(', ')} equipment`);
+        }
+        if (!parsedData.focusCycle && currentUser.focusCycle) {
+          const cycleName = currentUser.focusCycle.charAt(0).toUpperCase() + currentUser.focusCycle.slice(1);
+          unchangedFields.push(`Morphit ${cycleName} focus`);
+        }
+        
+        const confirmationMessage = changedFields.length > 0
+          ? `Got it! I'll update your profile to: ${updatedFields.join(', ')}. ${unchangedFields.length > 0 ? `Your ${unchangedFields.join(', ')} will stay the same. ` : ''}Accept these changes and generate your program?`
+          : `I'll update your profile to: ${updatedFields.join(', ')}. Accept these changes and generate your program?`;
+        
+        return res.json({
+          success: false,
+          needsConfirmation: true,
+          confirmationMessage,
+          parsedChanges: updatedFields,
+          updateData,
+          currentSettings: {
+            daysPerWeek: currentUser.daysPerWeek,
+            workoutDuration: currentUser.workoutDuration,
+            equipment: currentUser.equipment,
+            focusCycle: currentUser.focusCycle,
+            fitnessLevel: currentUser.fitnessLevel,
+          },
+        });
+      }
+      
+      // Confirmed - Apply the changes
+      console.log("[PROFILE-UPDATE] Applying confirmed changes:", updateData);
+      await storage.updateUser(userId, updateData);
       
       res.json({
         success: true,
