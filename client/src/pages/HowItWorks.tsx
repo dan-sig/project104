@@ -74,6 +74,67 @@ export default function HowItWorks() {
             </div>
           </Card>
 
+          <Card className="p-8 space-y-6">
+            <h2 className="text-2xl font-semibold">4-Week Phase Progression</h2>
+            <p className="text-muted-foreground">
+              Inside each 7-day cycle, your training follows a research-backed 4-week progression designed to build strength while preventing burnout.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                    1
+                  </div>
+                  <h3 className="font-semibold">Learn</h3>
+                </div>
+                <p className="text-sm text-muted-foreground pl-10">
+                  Groove new patterns and perfect technique with moderate intensity (RPE 5-6)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                    2
+                  </div>
+                  <h3 className="font-semibold">Load</h3>
+                </div>
+                <p className="text-sm text-muted-foreground pl-10">
+                  Add resistance and training density as your body adapts (RPE 7)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                    3
+                  </div>
+                  <h3 className="font-semibold">Push</h3>
+                </div>
+                <p className="text-sm text-muted-foreground pl-10">
+                  Peak effort and intensity for maximum adaptation (RPE 8-9)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                    4
+                  </div>
+                  <h3 className="font-semibold">Deload</h3>
+                </div>
+                <p className="text-sm text-muted-foreground pl-10">
+                  Recover, consolidate gains, and reset for the next cycle (RPE 5-6)
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Learn → Load → Push → Deload.</strong> This cyclical approach creates continuous, measurable progress whether you train 3, 4, or 5 days per week.
+              </p>
+            </div>
+          </Card>
+
           <Card className="p-8 bg-primary/5 border-primary/20 space-y-6">
             <div className="flex items-center gap-3">
               <RefreshCw className="h-6 w-6 text-primary" />

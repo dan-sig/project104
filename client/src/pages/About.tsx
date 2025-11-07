@@ -21,9 +21,9 @@ export default function About() {
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 mb-4">
             <Target className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold">Functional Movement Patterns</h1>
+          <h1 className="text-4xl font-bold">The 10 Human Movement Patterns</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Train the way your body was designed to move
+            Master the movements that define how humans move, lift, and age well
           </p>
         </div>
 
@@ -84,10 +84,10 @@ export default function About() {
                 <TrendingUp className="h-6 w-6 text-primary" />
               </div>
               <div className="space-y-2 flex-1">
-                <h3 className="text-xl font-semibold">Why This Matters</h3>
+                <h3 className="text-xl font-semibold">Strength That Transfers. Strength That Lasts.</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  When you train movement patterns instead of muscles, you build <strong>functional strength</strong> that 
-                  transfers directly to your daily life. You'll move better, feel stronger, and reduce injury risk.
+                  By mastering these 10 patterns, you build strength that transfers to real life—strength you can feel in every movement, every day. 
+                  Morphit ensures complete balance across all patterns: <strong>no missing links, no redundant movements</strong>.
                 </p>
               </div>
             </div>

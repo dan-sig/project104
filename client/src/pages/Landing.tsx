@@ -27,12 +27,12 @@ export default function Landing() {
             {/* Main Headline */}
             <div className="space-y-4 max-w-3xl mx-auto">
               <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
-                Science-Backed Training <br />
-                <span className="text-primary">Built for Real Life</span>
+                Train Smarter. <br />
+                <span className="text-primary">Adapt Forever.</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Professional CNS-ordered programming that adapts to your schedule, equipment, and fitness level. 
-                Train the movement patterns that matter for everyday life.
+                The first longevity-based training system that evolves with you. 
+                Personalized 4-week cycles built on human movement science and CNS progression—balancing performance, recovery, and strength that lasts.
               </p>
             </div>
 
@@ -61,12 +61,77 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Science-Backed Features Section */}
+      {/* The 4 Morphit Cycles Section */}
       <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center space-y-4 mb-12">
-          <h3 className="text-3xl font-bold">Professional Programming Meets Real-World Flexibility</h3>
+          <h3 className="text-3xl font-bold">Four Training Cycles. One Adaptive System.</h3>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Built on exercise science principles with the adaptability you need for modern life
+            Choose the cycle that matches your goal—each follows the same 4-week Learn → Load → Push → Deload progression
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mb-16">
+          {/* Morphit Flow */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <Activity className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Morphit Flow</h3>
+            </div>
+            <p className="text-sm text-primary font-medium italic">Find your range. Reclaim your movement.</p>
+            <p className="text-muted-foreground">
+              Mobility, joint control, and stability. Perfect for recovery, travel, or longevity training with slower tempos and controlled movements.
+            </p>
+          </Card>
+
+          {/* Morphit Build */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Morphit Build</h3>
+            </div>
+            <p className="text-sm text-primary font-medium italic">Aesthetic meets athletic.</p>
+            <p className="text-muted-foreground">
+              Functional hypertrophy and joint integrity. Shape your physique without sacrificing movement quality through progressive overload and full-range lifts.
+            </p>
+          </Card>
+
+          {/* Morphit Strong */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <Dumbbell className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Morphit Strong</h3>
+            </div>
+            <p className="text-sm text-primary font-medium italic">Lift heavy. Move better. Last longer.</p>
+            <p className="text-muted-foreground">
+              Neural strength and maximal output. Low reps, high tension, longer rest periods with technical precision for experienced lifters and athletes.
+            </p>
+          </Card>
+
+          {/* Morphit Move */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-primary/10 w-fit">
+                <Heart className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold">Morphit Move</h3>
+            </div>
+            <p className="text-sm text-primary font-medium italic">Strong today. Capable for life.</p>
+            <p className="text-muted-foreground">
+              Total-body balance, conditioning, and longevity. Moderate intensity hybrid sessions with perfect CNS balance for sustainable, long-term fitness.
+            </p>
+          </Card>
+        </div>
+
+        <div className="text-center space-y-4 mb-12 mt-16">
+          <h3 className="text-3xl font-bold">Built on Movement Science</h3>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Every cycle adapts to your schedule, equipment, and fitness level
           </p>
         </div>
 
@@ -203,9 +268,9 @@ export default function Landing() {
       {/* Final CTA */}
       <div className="max-w-7xl mx-auto px-6 py-20 text-center">
         <div className="space-y-6 max-w-2xl mx-auto">
-          <h3 className="text-3xl font-bold">Ready to Train Like a Pro?</h3>
+          <h3 className="text-3xl font-bold">The Morphit Promise</h3>
           <p className="text-lg text-muted-foreground">
-            Join athletes, parents, and busy professionals who use science-backed programming to build real-world strength and fitness.
+            Smarter. Stronger. Longer. Whatever your goal—to move better, build muscle, lift heavier, or simply stay in the game—Morphit gives you a structured, adaptive system that keeps you progressing without burning out.
           </p>
           <Button
             size="lg"

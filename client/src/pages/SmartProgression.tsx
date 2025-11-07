@@ -21,9 +21,9 @@ export default function SmartProgression() {
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 mb-4">
             <Activity className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold">Science-Backed Progression</h1>
+          <h1 className="text-4xl font-bold">Longevity-First Training</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Programs built on functional movement patterns that evolve with you
+            Adaptive programs built on movement science and CNS progression—balancing performance, recovery, and strength that lasts
           </p>
         </div>
 
@@ -32,22 +32,22 @@ export default function SmartProgression() {
           <Card className="p-8 space-y-6">
             <div className="flex items-center gap-3">
               <Sparkles className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-semibold">Smart Program Generation</h2>
+              <h2 className="text-2xl font-semibold">Choose Your Training Cycle</h2>
             </div>
             <p className="text-muted-foreground text-lg leading-relaxed">
-              Every program is uniquely built using functional movement patterns based on your specific needs:
+              Select the cycle that matches your current goal—each follows the same 4-week Learn → Load → Push → Deload progression:
             </p>
             
             <div className="grid gap-4">
               <div className="flex items-start gap-4">
                 <div className="p-2 rounded-lg bg-primary/10">
-                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <Activity className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="font-semibold">Your Fitness Level</h3>
+                  <h3 className="font-semibold">Morphit Flow</h3>
+                  <p className="text-xs text-primary font-medium italic mb-1">Find your range. Reclaim your movement.</p>
                   <p className="text-sm text-muted-foreground">
-                    Optional fitness tests assess your strength across all 10 movement patterns. 
-                    Programs adapt exercise difficulty to match your current abilities using proven strength progression principles.
+                    Mobility, joint control, and stability for recovery, travel, or longevity training.
                   </p>
                 </div>
               </div>
@@ -57,10 +57,23 @@ export default function SmartProgression() {
                   <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="font-semibold">Your Equipment</h3>
+                  <h3 className="font-semibold">Morphit Build</h3>
+                  <p className="text-xs text-primary font-medium italic mb-1">Aesthetic meets athletic.</p>
                   <p className="text-sm text-muted-foreground">
-                    From bodyweight-only to full gym access, our system selects from 196 exercises 
-                    that match what you have available, ensuring every workout is practical and effective.
+                    Functional hypertrophy and joint integrity—shape your physique without sacrificing movement quality.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h3 className="font-semibold">Morphit Strong</h3>
+                  <p className="text-xs text-primary font-medium italic mb-1">Lift heavy. Move better. Last longer.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Neural strength and maximal output with low reps, high tension, and technical precision.
                   </p>
                 </div>
               </div>
@@ -70,10 +83,10 @@ export default function SmartProgression() {
                   <Zap className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="font-semibold">Your Goals</h3>
+                  <h3 className="font-semibold">Morphit Move</h3>
+                  <p className="text-xs text-primary font-medium italic mb-1">Strong today. Capable for life.</p>
                   <p className="text-sm text-muted-foreground">
-                    Whether building muscle, losing fat, or maintaining fitness, programs adjust 
-                    workout intensity, volume, and cardio based on established sports science principles.
+                    Total-body balance, conditioning, and longevity with moderate intensity and perfect CNS balance.
                   </p>
                 </div>
               </div>
@@ -81,44 +94,61 @@ export default function SmartProgression() {
           </Card>
 
           <Card className="p-8 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 space-y-4">
-            <h3 className="text-xl font-semibold">Intelligent Workout Design</h3>
+            <h3 className="text-xl font-semibold">The CNS-Balanced Session Blueprint</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Each workout follows professional programming principles:
+              Every workout follows a scientifically designed sequence to train your nervous system in the right order—building energy, not fatigue:
             </p>
             <ul className="space-y-3 text-muted-foreground">
               <li className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                 <div>
-                  <strong className="text-foreground">CNS-Ordered Progression:</strong> Warmup → Power → Compounds → Isolations → Core → Cardio
+                  <strong className="text-foreground">Warm-Up:</strong> Activation & mobility to prepare joints and activate stabilizers
                 </div>
               </li>
               <li className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                 <div>
-                  <strong className="text-foreground">Smart Exercise Variety:</strong> Hierarchical reuse prevents fatigue while maximizing variety
+                  <strong className="text-foreground">Power:</strong> Explosive readiness work that primes the CNS
                 </div>
               </li>
               <li className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                 <div>
-                  <strong className="text-foreground">Muscle Recovery Tracking:</strong> Prevents overwork through dual-layer muscle tracking
+                  <strong className="text-foreground">Compound:</strong> Main strength block with multi-joint lifts for load and growth
                 </div>
               </li>
               <li className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                 <div>
-                  <strong className="text-foreground">Precise Time Calculation:</strong> Workouts hit your target duration (30-90 min) consistently
+                  <strong className="text-foreground">Isolation:</strong> Accessory control for targeted work on posture and balance
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <div>
+                  <strong className="text-foreground">Core:</strong> Stability & control through anti-rotation and trunk strength
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <div>
+                  <strong className="text-foreground">Conditioning:</strong> Longevity engine with carries, circuits, or steady cardio
                 </div>
               </li>
             </ul>
+            <div className="bg-background/50 rounded-lg p-4 mt-4">
+              <p className="text-sm text-muted-foreground">
+                This structure keeps sessions neuro-balanced: high-demand work first, stability in the middle, recovery and capacity last. You finish every session feeling <strong className="text-foreground">stronger, looser, and more energized</strong>.
+              </p>
+            </div>
           </Card>
 
           <div className="bg-muted/30 rounded-lg p-6 space-y-3">
-            <h3 className="font-semibold text-lg">Week-by-Week Adaptation</h3>
+            <h3 className="font-semibold text-lg">Adapts to Your Life</h3>
             <p className="text-muted-foreground">
-              As you complete cycles and progress, the system tracks your improvements. 
-              Retake fitness tests to update your program difficulty. Adjust equipment or goals 
-              anytime to regenerate with fresh workouts that match your evolving needs.
+              Morphit custom-fits your program to your real schedule and equipment. Train 3, 4, or 5 days per week. 
+              Choose session lengths from 30 to 90 minutes. From bodyweight-only to full gym access, the system 
+              intelligently modifies sets, reps, tempo, RPE, and rest to fit your parameters—<strong className="text-foreground">no guesswork, no wasted effort</strong>.
             </p>
           </div>
 
