@@ -1352,18 +1352,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Workout Program routes
   
   // POST /api/programs/generate-from-prompt - Generate program from natural language prompt
-  // Receives: { prompt: string }
-  // Returns: { parsedData, needsAssessment, needsMoreInfo, missingFields }
+  // Receives: { prompt: string, confirmed?: boolean }
+  // Returns: { parsedData, needsAssessment, needsMoreInfo, missingFields, currentSettings?, confirmationMessage? }
   app.post("/api/programs/generate-from-prompt", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { prompt } = req.body;
+      const { prompt, confirmed } = req.body;
       
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: "Prompt is required" });
       }
       
-      console.log("[PROMPT-PARSE] Parsing user prompt:", prompt);
+      console.log("[PROMPT-PARSE] Parsing user prompt:", prompt, "confirmed:", confirmed);
+      
+      // Get current user settings
+      const currentUser = await storage.getUser(userId);
+      const hasExistingSettings = currentUser && currentUser.daysPerWeek && currentUser.workoutDuration && currentUser.equipment;
       
       // Parse the prompt using OpenAI
       const parseResult = await parsePromptToFitnessData(prompt);
@@ -1379,6 +1383,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const parsedData = parseResult.data!;
       console.log("[PROMPT-PARSE] Successfully extracted data:", parsedData);
+      
+      // If user has existing settings and hasn't confirmed, ask for confirmation
+      if (hasExistingSettings && !confirmed) {
+        const cycleNames = { flow: "Morphit Flow", build: "Morphit Build", strong: "Morphit Strong", move: "Morphit Move" };
+        const cycleName = cycleNames[currentUser.focusCycle as keyof typeof cycleNames] || "Morphit Move";
+        
+        return res.json({
+          success: false,
+          needsConfirmation: true,
+          currentSettings: {
+            daysPerWeek: currentUser.daysPerWeek,
+            workoutDuration: currentUser.workoutDuration,
+            equipment: currentUser.equipment,
+            focusCycle: currentUser.focusCycle,
+            cycleName: cycleName,
+            fitnessLevel: currentUser.fitnessLevel,
+          },
+          parsedData, // Include what we parsed from the prompt
+          confirmationMessage: `I see you currently train ${currentUser.daysPerWeek} days/week with ${currentUser.workoutDuration}-minute sessions using ${currentUser.equipment?.join(', ') || 'bodyweight'} equipment on ${cycleName} at ${currentUser.fitnessLevel} level. Would you like to keep these settings or make changes?`,
+        });
+      }
       
       // Update user profile with extracted data
       await storage.updateUser(userId, {

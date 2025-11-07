@@ -21,6 +21,9 @@ interface GenerateProgramResponse {
   parsedData?: any;
   needsAssessment?: boolean;
   needsMoreInfo?: boolean;
+  needsConfirmation?: boolean;
+  currentSettings?: any;
+  confirmationMessage?: string;
   missingFields?: string[];
   error?: string;
 }
@@ -43,6 +46,7 @@ export default function AITrainingAssistant() {
   const [generateSuccess, setGenerateSuccess] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updatedFields, setUpdatedFields] = useState<string[]>([]);
+  const [confirmationData, setConfirmationData] = useState<{ message: string; settings: any; parsedData: any } | null>(null);
   const { toast } = useToast();
 
   const examplePrompts = {
@@ -105,8 +109,8 @@ export default function AITrainingAssistant() {
     }
   };
 
-  const handleGenerateProgram = async () => {
-    if (!prompt.trim()) {
+  const handleGenerateProgram = async (confirmed = false) => {
+    if (!prompt.trim() && !confirmed) {
       toast({
         title: "Prompt required",
         description: "Please describe your fitness goals and preferences.",
@@ -120,7 +124,10 @@ export default function AITrainingAssistant() {
 
     try {
       // Step 1: Parse the prompt and update user profile
-      const parseResponse = await apiRequest("POST", "/api/programs/generate-from-prompt", { prompt });
+      const parseResponse = await apiRequest("POST", "/api/programs/generate-from-prompt", { 
+        prompt: prompt.trim(),
+        confirmed 
+      });
       
       // Check for HTTP errors first
       if (!parseResponse.ok) {
@@ -129,6 +136,17 @@ export default function AITrainingAssistant() {
       }
       
       const parseResult: GenerateProgramResponse = await parseResponse.json();
+
+      // Handle confirmation request
+      if (parseResult.needsConfirmation && parseResult.confirmationMessage) {
+        setConfirmationData({
+          message: parseResult.confirmationMessage,
+          settings: parseResult.currentSettings,
+          parsedData: parseResult.parsedData,
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // Handle missing information
       if (!parseResult.success || parseResult.needsMoreInfo) {
@@ -145,16 +163,14 @@ export default function AITrainingAssistant() {
         return;
       }
 
-      // Handle fitness assessment requirement
+      // Show informational message about assessment if suggested, but don't block generation
       if (parseResult.needsAssessment) {
         toast({
-          title: "Fitness assessment required",
-          description: "Please complete the fitness assessment in Settings before generating a program. This helps us create the right program for your fitness level.",
+          title: "Fitness assessment recommended",
+          description: "For best results, consider taking the fitness assessment in Settings later. Continuing with conservative defaults for now.",
           variant: "default",
-          duration: 6000,
+          duration: 4000,
         });
-        setIsLoading(false);
-        return;
       }
 
       // Step 2: Generate the program with updated profile
@@ -172,6 +188,7 @@ export default function AITrainingAssistant() {
       await queryClient.invalidateQueries({ queryKey: ["/api/program-workouts"] });
       
       setGenerateSuccess(true);
+      setConfirmationData(null);
       toast({
         title: "Program created!",
         description: "Your new workout program is ready. Check the home page to get started.",
@@ -436,6 +453,61 @@ export default function AITrainingAssistant() {
       );
     }
 
+    if (confirmationData) {
+      return (
+        <div className="space-y-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Target className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium mb-2">Confirm Your Settings</p>
+                    <p className="text-sm text-muted-foreground" data-testid="text-confirmation-message">
+                      {confirmationData.message}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleGenerateProgram(true)}
+                    disabled={isLoading}
+                    className="flex-1"
+                    data-testid="button-confirm-settings"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Keep Settings
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setConfirmationData(null);
+                      setPrompt("");
+                    }}
+                    disabled={isLoading}
+                    className="flex-1"
+                    data-testid="button-change-settings"
+                  >
+                    Make Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <Textarea
@@ -448,7 +520,7 @@ export default function AITrainingAssistant() {
         />
 
         <Button
-          onClick={handleGenerateProgram}
+          onClick={() => handleGenerateProgram(false)}
           disabled={isLoading || !prompt.trim()}
           className="w-full"
           data-testid="button-generate-program"

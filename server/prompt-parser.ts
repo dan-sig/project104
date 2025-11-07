@@ -41,7 +41,7 @@ const FitnessProgramDataSchema = z.object({
     .describe("Fitness experience level based on described abilities and background"),
   
   wantsAssessment: z.boolean()
-    .describe("Whether the user wants to take a fitness assessment (true if they mention testing abilities, wanting personalized difficulty, or are intermediate/advanced; false if beginner or just want to get started quickly)"),
+    .describe("Whether the user explicitly wants to take a fitness assessment (true ONLY if they specifically mention 'test', 'assessment', 'check my fitness level', or 'evaluate my abilities'; false otherwise - assessments are optional, not required)"),
   
   parsedGoals: z.string()
     .describe("A brief summary of the user's stated fitness goals and motivations"),
@@ -65,7 +65,7 @@ Extract the following information:
 - equipment: What equipment they have access to (be specific: dumbbells, barbell, pull_up_bar, resistance_bands, kettlebell, bench, cable_machine, smith_machine, leg_press, etc.)
 - focusCycle: Their training focus using Morphit's 4-cycle system (flow/build/strong/move - see mapping below)
 - experienceLevel: Their fitness level (beginner=new to training, intermediate=some experience, advanced=years of consistent training)
-- wantsAssessment: Whether they should take a fitness test (true for intermediate/advanced or if they mention wanting personalized difficulty; false for complete beginners or those wanting to start immediately)
+- wantsAssessment: Whether they explicitly want a fitness test (true ONLY if they specifically say "test", "assessment", "check my fitness", "evaluate my abilities"; false by default - assessments are optional)
 - parsedGoals: A brief summary of what they want to achieve
 
 EQUIPMENT MAPPING:
