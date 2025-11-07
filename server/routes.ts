@@ -840,22 +840,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete updates.targetCalories;
       
       const hasPhysicalStatChange = updates.height !== undefined || updates.weight !== undefined || updates.age !== undefined;
-      const hasGoalChange = updates.nutritionGoal !== undefined;
       
-      if (hasPhysicalStatChange || hasGoalChange) {
+      if (hasPhysicalStatChange) {
         const finalHeight = updates.height !== undefined ? updates.height : user.height;
         const finalWeight = updates.weight !== undefined ? updates.weight : user.weight;
         const finalAge = updates.age !== undefined ? updates.age : (user.dateOfBirth ? calculateAge(user.dateOfBirth) : null);
-        const finalGoal = updates.nutritionGoal !== undefined ? updates.nutritionGoal : user.nutritionGoal;
         
         if (finalHeight && finalWeight && finalAge) {
           const bmr = Math.round(10 * finalWeight + 6.25 * finalHeight - 5 * finalAge + 5);
-          const targetCalories = finalGoal === "gain" ? bmr + 500 
-                               : finalGoal === "lose" ? bmr - 500 
-                               : bmr;
-          
           updates.bmr = bmr;
-          updates.targetCalories = targetCalories;
+          updates.targetCalories = bmr;  // Set to maintenance by default
         }
       }
       
@@ -1380,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         daysPerWeek: parsedData.daysPerWeek,
         sessionDuration: parsedData.sessionDuration,
         availableEquipment: parsedData.equipment,
-        nutritionGoal: parsedData.nutritionGoal,
+        focusCycle: parsedData.focusCycle,
         fitnessLevel: parsedData.experienceLevel,
       });
       

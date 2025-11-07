@@ -63,7 +63,7 @@ export const users = pgTable("users", {
   dateOfBirth: timestamp("date_of_birth"),
   bmr: integer("bmr"),
   targetCalories: integer("target_calories"),
-  nutritionGoal: text("nutrition_goal"),
+  focusCycle: text("focus_cycle"),  // Morphit Focus Cycle: flow, build, strong, move
   unitPreference: text("unit_preference").notNull().default("imperial"),
   equipment: text("equipment").array(),
   workoutDuration: integer("workout_duration"),

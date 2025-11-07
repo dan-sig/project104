@@ -9,7 +9,7 @@
 // for 45 minutes with dumbbells and a pull-up bar at home."
 //
 // Extracted output: { daysPerWeek: 4, sessionDuration: 45, equipment: ['dumbbells', 'pull_up_bar'], 
-// nutritionGoal: 'maintain', experienceLevel: 'intermediate' }
+// focusCycle: 'build', experienceLevel: 'intermediate' }
 // ==========================================
 
 import OpenAI from "openai";
@@ -34,8 +34,8 @@ const FitnessProgramDataSchema = z.object({
   equipment: z.array(z.string())
     .describe("Available equipment (e.g., 'dumbbells', 'barbell', 'pull_up_bar', 'resistance_bands', 'bodyweight')"),
   
-  nutritionGoal: z.enum(["gain", "maintain", "lose"])
-    .describe("Primary nutrition goal: 'gain' for muscle/weight gain, 'maintain' for body composition, 'lose' for fat/weight loss"),
+  focusCycle: z.enum(["flow", "build", "strong", "move"])
+    .describe("Morphit Focus Cycle: 'flow' for mobility+stability, 'build' for hypertrophy, 'strong' for strength, 'move' for longevity/balanced training"),
   
   experienceLevel: z.enum(["beginner", "intermediate", "advanced"])
     .describe("Fitness experience level based on described abilities and background"),
@@ -63,7 +63,7 @@ Extract the following information:
 - daysPerWeek: How many days per week they can train (must be 3, 4, or 5)
 - sessionDuration: How long each workout is (must be 30, 45, 60, or 90 minutes)
 - equipment: What equipment they have access to (be specific: dumbbells, barbell, pull_up_bar, resistance_bands, kettlebell, bench, cable_machine, smith_machine, leg_press, etc.)
-- nutritionGoal: Their primary goal (gain=build muscle/gain weight, maintain=recomp/maintain weight, lose=lose fat/weight)
+- focusCycle: Their training focus using Morphit's 4-cycle system (flow/build/strong/move - see mapping below)
 - experienceLevel: Their fitness level (beginner=new to training, intermediate=some experience, advanced=years of consistent training)
 - wantsAssessment: Whether they should take a fitness test (true for intermediate/advanced or if they mention wanting personalized difficulty; false for complete beginners or those wanting to start immediately)
 - parsedGoals: A brief summary of what they want to achieve
@@ -80,11 +80,13 @@ EQUIPMENT MAPPING:
 - "leg press" → leg_press
 - "bodyweight only", "no equipment" → bodyweight (always include this)
 
-NUTRITION GOAL MAPPING:
-- "build muscle", "gain weight", "bulk" → gain
-- "lose weight", "cut", "burn fat", "get lean" → lose
-- "recomp", "maintain", "stay the same", "tone" → maintain
-- If they mention both building muscle AND losing fat → maintain
+FOCUS CYCLE MAPPING (Morphit's 4-cycle system):
+- "mobility", "flexibility", "movement quality", "injury prevention", "stability", "control" → flow (Mobility + Stability)
+- "build muscle", "hypertrophy", "muscle gain", "size", "volume", "pump" → build (Hypertrophy)
+- "strength", "power", "lift heavy", "max strength", "force production" → strong (Strength)
+- "longevity", "balanced", "general fitness", "health", "functional", "all-around", "sustainable" → move (Balanced/Longevity)
+- If they mention multiple conflicting goals (e.g., both muscle AND mobility) → move
+- If unclear or just "get fit" → move
 
 EXPERIENCE LEVEL MAPPING:
 - Never trained, just starting, complete beginner → beginner
@@ -95,7 +97,7 @@ Make reasonable assumptions if information is missing:
 - If no duration mentioned → assume 45 minutes
 - If no days mentioned → assume 4 days
 - If no equipment mentioned → ask what they have
-- If nutrition goal unclear → assume maintain
+- If focus cycle unclear → assume move (balanced/longevity)
 - If experience unclear → assume intermediate`;
 
 export async function parsePromptToFitnessData(
@@ -160,12 +162,12 @@ export async function parsePromptToFitnessData(
 // Helper function to generate example prompts for users
 export function getExamplePrompts(): string[] {
   return [
-    "I want to build muscle and strength. I can train 4 days a week for 45 minutes. I have dumbbells, a barbell, and a bench at home.",
+    "I want to build serious muscle with Morphit Build. I can train 4 days a week for 45 minutes. I have dumbbells, a barbell, and a bench at home.",
     
-    "I'm a beginner looking to lose weight and get in shape. I can work out 3 days a week for 30 minutes with just bodyweight exercises.",
+    "I'm focused on improving mobility and movement quality. I can work out 3 days a week for 45 minutes with just bodyweight exercises and resistance bands.",
     
-    "I have gym access with all equipment and want to train 5 days a week for 60 minutes. My goal is to maintain my current weight while building muscle definition. I've been lifting for 2 years.",
+    "I have gym access with all equipment and want to train 5 days a week for 60 minutes focusing on maximum strength. I've been lifting for 2 years.",
     
-    "I travel a lot for work so I need workouts I can do anywhere. I can train 4 days a week for 45 minutes, usually with just dumbbells or bodyweight. Want to stay lean and strong.",
+    "I want a balanced, sustainable program for long-term health. I can train 4 days a week for 45 minutes, usually with just dumbbells or bodyweight.",
   ];
 }
