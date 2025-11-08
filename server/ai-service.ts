@@ -2374,8 +2374,12 @@ export async function generateWorkoutProgram(
     }
   }
   
+  // Get Morphit cycle name based on user's focus cycle (default to 'move' if not set)
+  const focusCycle = (user.focusCycle || 'move') as keyof typeof CYCLE_INFO;
+  const morphitCycleName = CYCLE_INFO[focusCycle].name;
+  
   const program: GeneratedProgram = {
-    programType: selectedTemplate.name,
+    programType: morphitCycleName,  // Use Morphit cycle name (e.g., "Morphit Flow", "Morphit Build")
     weeklyStructure: selectedTemplate.description,
     durationWeeks: 4, // Reduced from 8 to 4 weeks for faster generation and progress check
     workouts,
