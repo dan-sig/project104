@@ -17,12 +17,14 @@ export default function Landing() {
           <div className="text-center space-y-8">
             {/* Logo/Brand */}
             <div className="flex flex-col items-center justify-center gap-6">
-              <img 
-                src={morphitLogo} 
-                alt="Morphit Logo" 
-                className="h-48 w-auto rounded-2xl"
-                data-testid="img-morphit-logo"
-              />
+              <div className="w-80 max-w-full px-4">
+                <img 
+                  src={morphitLogo} 
+                  alt="Morphit - Train Smarter. Move Stronger. Live Longer." 
+                  className="w-full h-auto rounded-2xl shadow-lg"
+                  data-testid="img-morphit-logo"
+                />
+              </div>
             </div>
 
             {/* Main Headline */}
