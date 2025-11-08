@@ -93,19 +93,86 @@ This folder contains professional screenshots of the Morphit fitness app for use
 
 ---
 
+### 📱 Mobile Marketing Screenshots (Vertical Format)
+
+Perfect for mobile-first advertising, Instagram stories, and app store previews!
+
+**mobile-landing-hero.png** (540 KB)
+- Mobile-optimized landing page with logo and tagline
+- Vertical format (375x812 - iPhone dimensions)
+- **Best for:** Instagram stories, mobile ads, app store screenshots
+
+**mobile-landing-dark.png** (618 KB)
+- Same mobile landing in dark mode
+- **Best for:** Dark-themed mobile campaigns, nighttime viewing
+
+**mobile-cycles.png** (50 KB)
+- Four Morphit Cycles on mobile screen
+- Light mode, vertical scroll
+- **Best for:** Mobile feature highlights, Instagram posts
+
+**mobile-cycles-dark.png** (23 KB)
+- Cycles section in mobile dark mode
+- **Best for:** Dark mobile ads
+
+**mobile-about.png** (123 KB)
+- About page showcasing 10 movement patterns
+- Mobile-optimized layout
+- **Best for:** Educational content, feature deep-dives
+
+**mobile-about-dark.png** (120 KB)
+- About page in dark mode
+- **Best for:** Dark-themed educational content
+
+**mobile-how-it-works.png** (218 KB)
+- How It Works page explaining 7-day cycle + 4-week progression
+- Mobile vertical format
+- **Best for:** Tutorial content, onboarding explanation
+
+**mobile-how-it-works-dark.png** (207 KB)
+- How It Works in dark mode
+- **Best for:** Dark tutorial content
+
+**mobile-science.png** (355 KB)
+- Science page with CNS programming details
+- Mobile-optimized science features
+- **Best for:** Technical marketing, credibility building
+
+**mobile-science-dark.png** (343 KB)
+- Science page in dark mode
+- **Best for:** Dark technical content
+
+**mobile-science-features.png** (55 KB)
+- Focused view of science features section
+- **Best for:** Highlighting specific technical features
+
+---
+
 ## 🎨 Usage Recommendations
 
 ### For Social Media Posts:
-- Instagram/Facebook: `morphit-landing-hero.png` or `morphit-cycles.png`
-- Twitter/X: `morphit-ai-conversation.png` (shows unique AI feature)
-- LinkedIn: `morphit-workout-session.png` (professional, functional)
+- **Instagram Stories:** `mobile-landing-hero.png`, `mobile-cycles.png` (vertical format perfect for stories)
+- **Instagram Feed:** `morphit-landing-hero.png` or `mobile-about.png`
+- **Facebook:** `morphit-cycles.png` or `morphit-workout-session.png`
+- **Twitter/X:** `morphit-ai-conversation.png` (shows unique AI feature)
+- **LinkedIn:** `morphit-workout-session.png` (professional, functional)
+- **TikTok/Reels:** Any `mobile-*` screenshot works great for short-form vertical video thumbnails
 
 ### For App Store/Play Store:
+
+**Desktop Previews:**
 1. Screenshot 1: `morphit-landing-hero.png` (hero/brand)
 2. Screenshot 2: `morphit-ai-onboarding.png` (unique selling point)
 3. Screenshot 3: `morphit-workout-session.png` (core functionality)
 4. Screenshot 4: `morphit-cycles.png` (program variety)
 5. Screenshot 5: `morphit-progress.png` (results tracking)
+
+**Mobile Previews (Recommended):**
+1. Screenshot 1: `mobile-landing-hero.png` (brand introduction)
+2. Screenshot 2: `mobile-cycles.png` (4 Focus Cycles)
+3. Screenshot 3: `mobile-how-it-works.png` (training system)
+4. Screenshot 4: `mobile-science.png` (credibility/science)
+5. Screenshot 5: `mobile-about.png` (10 movement patterns)
 
 ### For Website/Landing Page:
 - Hero: `morphit-landing-hero.png`
@@ -133,11 +200,21 @@ This folder contains professional screenshots of the Morphit fitness app for use
 
 ## 📏 Technical Details
 
-- Resolution: 1920x1080 (desktop)
+**Desktop Screenshots:**
+- Resolution: 1920x1080 (16:9 landscape)
 - Format: PNG
-- Total size: ~3.4 MB
+- Total: 13 files (~3.4 MB)
+
+**Mobile Screenshots:**
+- Resolution: 375x812 (9:19.5 vertical, iPhone X/11/12/13)
+- Format: PNG
+- Total: 11 files (~2.7 MB)
+
+**Overall:**
+- Combined total: 24 screenshots (~6.1 MB)
 - Date generated: November 8, 2025
-- Theme support: Light and dark mode versions available
+- Theme support: Light and dark mode versions for all pages
+- Aspect ratios: Both landscape (desktop) and vertical (mobile) formats available
 
 ---
 
