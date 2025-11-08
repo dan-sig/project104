@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Target, TrendingUp, Calendar, Zap, Award, Brain, Repeat, Clock, Activity, Luggage, Heart } from "lucide-react";
 import { useLocation } from "wouter";
+import morphitLogo from "@assets/31FDE9D6-272E-4F80-9D02-C546AEF4F1A8_1762631595796.png";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
@@ -15,20 +16,21 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-6 py-24 lg:py-32">
           <div className="text-center space-y-8">
             {/* Logo/Brand */}
-            <div className="flex items-center justify-center gap-3">
-              <div className="p-3 rounded-2xl bg-primary/10">
-                <Dumbbell className="h-12 w-12 text-primary" />
-              </div>
-              <h1 className="text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
-                Morphit
-              </h1>
+            <div className="flex flex-col items-center justify-center gap-6">
+              <img 
+                src={morphitLogo} 
+                alt="Morphit Logo" 
+                className="h-48 w-auto"
+                data-testid="img-morphit-logo"
+              />
             </div>
 
             {/* Main Headline */}
             <div className="space-y-4 max-w-3xl mx-auto">
               <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
                 Train Smarter. <br />
-                <span className="text-primary">Adapt Forever.</span>
+                Move Stronger. <br />
+                <span className="text-primary">Live Longer.</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 The first longevity-based training system that evolves with you. 
