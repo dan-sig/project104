@@ -50,7 +50,8 @@ import {
   getTempo, 
   getRPE, 
   getRIR, 
-  getWeekParameters 
+  getWeekParameters,
+  CYCLE_INFO
 } from "@shared/cycleConstants";
 
 // ==========================================
