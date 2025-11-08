@@ -2375,8 +2375,8 @@ export async function generateWorkoutProgram(
   }
   
   // Get Morphit cycle name based on user's focus cycle (default to 'move' if not set)
-  const focusCycle = (user.focusCycle || 'move') as keyof typeof CYCLE_INFO;
-  const morphitCycleName = CYCLE_INFO[focusCycle].name;
+  const userFocusCycle = (user.focusCycle || 'move') as 'flow' | 'build' | 'strong' | 'move';
+  const morphitCycleName = CYCLE_INFO[userFocusCycle].name;
   
   const program: GeneratedProgram = {
     programType: morphitCycleName,  // Use Morphit cycle name (e.g., "Morphit Flow", "Morphit Build")
