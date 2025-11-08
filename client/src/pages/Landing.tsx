@@ -20,7 +20,7 @@ export default function Landing() {
               <img 
                 src={morphitLogo} 
                 alt="Morphit Logo" 
-                className="h-48 w-auto"
+                className="h-48 w-auto rounded-2xl"
                 data-testid="img-morphit-logo"
               />
             </div>
