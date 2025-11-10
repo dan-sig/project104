@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Target, Clock, Dumbbell } from "lucide-react";
+import { Calendar, Target, Clock, Dumbbell, DollarSign, CreditCard, Percent } from "lucide-react";
 import type { MockClient } from "@/data/trainerMockData";
 import { formatDistanceToNow } from "date-fns";
 
@@ -9,6 +9,21 @@ interface ClientProfileProps {
 }
 
 export function ClientProfile({ client }: ClientProfileProps) {
+  const trainerEarnings = client.subscriptionPrice * client.commissionRate;
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatPercent = (decimal: number) => {
+    return `${(decimal * 100).toFixed(0)}%`;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -38,6 +53,45 @@ export function ClientProfile({ client }: ClientProfileProps) {
                   ? formatDistanceToNow(new Date(client.lastWorkout), { addSuffix: true })
                   : 'Never'
                 }
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-subscription-info">
+        <CardHeader>
+          <CardTitle>Subscription & Earnings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium" data-testid="text-subscription-type">
+                {client.subscriptionType === 'monthly' ? 'Monthly' : 'Annual'} Subscription
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(client.subscriptionPrice)}/{client.subscriptionType === 'monthly' ? 'mo' : 'yr'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Percent className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium" data-testid="text-commission-rate">
+                {formatPercent(client.commissionRate)} Commission Rate
+              </p>
+              <p className="text-sm text-muted-foreground">Your percentage from this client</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <DollarSign className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-medium text-primary text-lg" data-testid="text-trainer-earnings">
+                {formatCurrency(trainerEarnings)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your earnings per {client.subscriptionType === 'monthly' ? 'month' : 'year'}
               </p>
             </div>
           </div>
