@@ -35,6 +35,9 @@ interface TrainerDataContextValue {
   getClientCompletionRate: (clientId: string) => number;
   getClientNextWorkout: (clientId: string) => MockWorkout | null;
   getClientStreak: (clientId: string) => number;
+  getTotalRevenue: () => number;
+  getMonthlyRevenue: () => number;
+  getAnnualRevenue: () => number;
   sendMessage: (clientId: string, message: string) => void;
   resolveFeedback: (feedbackId: string) => void;
   updateClientProgram: (clientId: string, newProgram: string) => void;
@@ -275,6 +278,33 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const getTotalRevenue = () => {
+    return clients
+      .filter(c => c.status === 'active')
+      .reduce((total, client) => {
+        const commission = client.subscriptionPrice * client.commissionRate;
+        return total + commission;
+      }, 0);
+  };
+
+  const getMonthlyRevenue = () => {
+    return clients
+      .filter(c => c.status === 'active' && c.subscriptionType === 'monthly')
+      .reduce((total, client) => {
+        const commission = client.subscriptionPrice * client.commissionRate;
+        return total + commission;
+      }, 0);
+  };
+
+  const getAnnualRevenue = () => {
+    return clients
+      .filter(c => c.status === 'active' && c.subscriptionType === 'annual')
+      .reduce((total, client) => {
+        const commission = client.subscriptionPrice * client.commissionRate;
+        return total + commission;
+      }, 0);
+  };
+
   const value: TrainerDataContextValue = {
     clients,
     feedback,
@@ -288,6 +318,9 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
     getClientCompletionRate,
     getClientNextWorkout,
     getClientStreak,
+    getTotalRevenue,
+    getMonthlyRevenue,
+    getAnnualRevenue,
     sendMessage,
     resolveFeedback,
     updateClientProgram,
