@@ -11,9 +11,19 @@ export default function OIDCCallbackPage() {
   useEffect(() => {
     async function handleAuthCallback() {
       try {
-        console.log("Auth callback - checking user program status");
+        console.log("Auth callback - checking user role and program status");
         
-        // Smart routing: Check if user has an active program
+        // Check if user selected trainer role
+        const selectedRole = sessionStorage.getItem('selectedRole');
+        
+        if (selectedRole === 'trainer') {
+          console.log("Trainer role detected, redirecting to trainer dashboard");
+          await queryClient.invalidateQueries();
+          setLocation("/trainer");
+          return;
+        }
+        
+        // User role: Smart routing based on program status
         const programResponse = await apiRequest('GET', '/api/programs/active');
         const activeProgram = await programResponse.json();
         
