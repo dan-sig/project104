@@ -43,6 +43,10 @@ import {
   type InsertTrainerProgramWorkout,
   type TrainerProgramExercise,
   type InsertTrainerProgramExercise,
+  type ProgramPurchase,
+  type InsertProgramPurchase,
+  type TrainerClient,
+  type InsertTrainerClient,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -124,6 +128,13 @@ export interface IStorage {
   deleteWorkoutExercises(workoutId: string): Promise<void>;
   
   getPublicProgramBySlug(slug: string): Promise<TrainerProgram | undefined>;
+  
+  createProgramPurchase(purchase: InsertProgramPurchase): Promise<ProgramPurchase>;
+  getTrainerPurchases(trainerId: string): Promise<ProgramPurchase[]>;
+  getProgramPurchases(programId: string): Promise<ProgramPurchase[]>;
+  
+  createTrainerClient(client: InsertTrainerClient): Promise<TrainerClient>;
+  getTrainerClients(trainerId: string): Promise<TrainerClient[]>;
 }
 
 
@@ -141,6 +152,8 @@ import {
   trainerPrograms,
   trainerProgramWorkouts,
   trainerProgramExercises,
+  programPurchases,
+  trainerClients,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 
@@ -733,6 +746,40 @@ export class DbStorage implements IStorage {
       .where(eq(trainerPrograms.slug, slug))
       .limit(1);
     return result[0];
+  }
+
+  // ==========================================
+  // PROGRAM PURCHASE OPERATIONS
+  // ==========================================
+  async createProgramPurchase(purchase: InsertProgramPurchase): Promise<ProgramPurchase> {
+    const result = await db.insert(programPurchases).values(purchase).returning();
+    return result[0];
+  }
+
+  async getTrainerPurchases(trainerId: string): Promise<ProgramPurchase[]> {
+    return db.select().from(programPurchases)
+      .where(eq(programPurchases.trainerId, trainerId))
+      .orderBy(desc(programPurchases.purchaseDate));
+  }
+
+  async getProgramPurchases(programId: string): Promise<ProgramPurchase[]> {
+    return db.select().from(programPurchases)
+      .where(eq(programPurchases.trainerProgramId, programId))
+      .orderBy(desc(programPurchases.purchaseDate));
+  }
+
+  // ==========================================
+  // TRAINER CLIENT ROSTER OPERATIONS
+  // ==========================================
+  async createTrainerClient(client: InsertTrainerClient): Promise<TrainerClient> {
+    const result = await db.insert(trainerClients).values(client).returning();
+    return result[0];
+  }
+
+  async getTrainerClients(trainerId: string): Promise<TrainerClient[]> {
+    return db.select().from(trainerClients)
+      .where(eq(trainerClients.trainerId, trainerId))
+      .orderBy(desc(trainerClients.addedDate));
   }
 
   // ==========================================

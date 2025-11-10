@@ -3644,6 +3644,130 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // POST /api/programs/purchase - Simulate program purchase
+  app.post("/api/programs/purchase", async (req: Request, res: Response) => {
+    try {
+      const { slug, buyerEmail } = req.body;
+
+      if (!slug || !buyerEmail) {
+        return res.status(400).json({ error: "Slug and buyer email are required" });
+      }
+
+      // Get the program
+      const program = await storage.getPublicProgramBySlug(slug);
+      if (!program || !program.isPublished) {
+        return res.status(404).json({ error: "Program not found or not available" });
+      }
+
+      // Create or get buyer user (simulated)
+      // First check if user exists by email
+      const existingUsers = await db.select().from(users).where(eq(users.email, buyerEmail)).limit(1);
+      let buyer;
+      if (existingUsers.length > 0) {
+        buyer = existingUsers[0];
+      } else {
+        // Create new buyer
+        const buyerId = `buyer-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        buyer = await storage.upsertUser({
+          id: buyerId,
+          email: buyerEmail,
+          role: "user",
+        });
+      }
+
+      // Calculate fees
+      const purchasePrice = program.price;
+      const platformFee = purchasePrice * 0.20; // 20%
+      const trainerEarnings = purchasePrice * 0.80; // 80%
+
+      // Create a workout program for the buyer (assign program)
+      const workoutProgram = await storage.createWorkoutProgram({
+        userId: buyer.id,
+        programType: `Trainer Program: ${program.name}`,
+        weeklyStructure: `${program.daysPerWeek} days/week`,
+        durationWeeks: program.durationWeeks,
+        intensityLevel: program.difficulty === "beginner" ? "light" : program.difficulty === "advanced" ? "vigorous" : "moderate",
+        isActive: 1,
+      });
+
+      // Clone trainer workouts and exercises to buyer's program
+      const trainerWorkouts = await storage.getTrainerProgramWorkouts(program.id);
+      for (const trainerWorkout of trainerWorkouts) {
+        // Create program workout for buyer
+        const programWorkout = await storage.createProgramWorkout({
+          programId: workoutProgram.id,
+          workoutName: trainerWorkout.workoutName,
+          movementFocus: trainerWorkout.movementFocus ?? [], // Already an array from schema
+          workoutIndex: trainerWorkout.orderIndex,
+          dayOfWeek: trainerWorkout.dayNumber,
+          workoutType: "strength", // Default type
+        });
+
+        // Get and clone exercises for this workout
+        const trainerExercises = await storage.getWorkoutExercisesForTrainer(trainerWorkout.id);
+        for (const trainerExercise of trainerExercises) {
+          // Parse reps string to get min/max (e.g., "8-12" -> min:8, max:12)
+          let repsMin = trainerExercise.sets;
+          let repsMax = trainerExercise.sets;
+          if (trainerExercise.reps) {
+            const repsParts = trainerExercise.reps.split("-");
+            if (repsParts.length === 2) {
+              repsMin = parseInt(repsParts[0]) || repsMin;
+              repsMax = parseInt(repsParts[1]) || repsMax;
+            } else {
+              repsMin = parseInt(trainerExercise.reps) || repsMin;
+              repsMax = repsMin;
+            }
+          }
+
+          await storage.createProgramExercise({
+            workoutId: programWorkout.id,
+            exerciseId: trainerExercise.exerciseId || "",
+            sets: trainerExercise.sets,
+            repsMin,
+            repsMax,
+            restSeconds: trainerExercise.rest || 60,
+            tempo: trainerExercise.tempo,
+            targetRPE: trainerExercise.rpe,
+            targetRIR: trainerExercise.rir,
+            notes: trainerExercise.notes,
+            orderIndex: trainerExercise.orderIndex,
+          });
+        }
+      }
+
+      // Create purchase record with workout program reference
+      const purchase = await storage.createProgramPurchase({
+        trainerProgramId: program.id,
+        trainerId: program.trainerId,
+        buyerId: buyer.id,
+        purchasePrice,
+        platformFee,
+        trainerEarnings,
+        pricingType: program.pricingType,
+        status: "completed",
+        workoutProgramId: workoutProgram.id,
+      });
+
+      // Add client to trainer's roster
+      await storage.createTrainerClient({
+        trainerId: program.trainerId,
+        clientId: buyer.id,
+        sourcePurchaseId: purchase.id,
+      });
+
+      res.status(201).json({
+        success: true,
+        purchase,
+        workoutProgram,
+        message: "Program purchased successfully! You can now access your training program.",
+      });
+    } catch (error) {
+      console.error("Error processing purchase:", error);
+      res.status(500).json({ error: "Failed to process purchase" });
+    }
+  });
+
   // ==========================================
   // TRAINER PROGRAM WORKOUT & EXERCISE ROUTES
   // ==========================================

@@ -1,6 +1,8 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRoute, useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +19,18 @@ import {
   Dumbbell,
   Clock,
   TrendingUp,
+  ShoppingCart,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ProgramBuyPageData {
   id: string;
@@ -49,13 +62,58 @@ interface ProgramBuyPageData {
 
 export default function ProgramBuyPage() {
   const [match, params] = useRoute("/programs/buy/:slug");
+  const [, setLocation] = useLocation();
   const slug = params?.slug;
+  const { toast } = useToast();
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [buyerEmail, setBuyerEmail] = useState("");
 
   // Fetch public program
   const { data: program, isLoading, error } = useQuery<ProgramBuyPageData>({
     queryKey: ["/api/programs/public", slug],
     enabled: !!slug,
   });
+
+  // Purchase mutation
+  const purchaseMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/programs/purchase", "POST", {
+        slug,
+        buyerEmail,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Purchase Successful!",
+        description: "Your training program has been activated. Redirecting...",
+      });
+      setPurchaseDialogOpen(false);
+      setBuyerEmail("");
+      // Redirect to home after 2 seconds
+      setTimeout(() => {
+        setLocation("/home");
+      }, 2000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purchase Failed",
+        description: error.message || "Failed to complete purchase. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePurchase = () => {
+    if (!buyerEmail || !buyerEmail.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    purchaseMutation.mutate();
+  };
 
   // Update SEO metadata when program loads
   useEffect(() => {
@@ -261,7 +319,13 @@ export default function ProgramBuyPage() {
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg" data-testid="button-purchase">
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => setPurchaseDialogOpen(true)}
+                  data-testid="button-purchase"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
                   Purchase Program
                 </Button>
 
@@ -273,6 +337,61 @@ export default function ProgramBuyPage() {
           </div>
         </div>
       </div>
+
+      {/* Purchase Dialog */}
+      <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
+        <DialogContent data-testid="dialog-purchase">
+          <DialogHeader>
+            <DialogTitle>Complete Purchase</DialogTitle>
+            <DialogDescription>
+              Enter your email to complete the purchase and get started with your training program.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="buyer-email">Email Address</Label>
+              <Input
+                id="buyer-email"
+                type="email"
+                placeholder="your@email.com"
+                value={buyerEmail}
+                onChange={(e) => setBuyerEmail(e.target.value)}
+                data-testid="input-buyer-email"
+              />
+            </div>
+            <div className="bg-muted p-4 rounded-md space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Program Price:</span>
+                <span className="font-semibold">${program?.price}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Platform Fee (20%):</span>
+                <span>${((program?.price || 0) * 0.2).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Trainer Earnings (80%):</span>
+                <span>${((program?.price || 0) * 0.8).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPurchaseDialogOpen(false)}
+              data-testid="button-cancel-purchase"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePurchase}
+              disabled={purchaseMutation.isPending}
+              data-testid="button-confirm-purchase"
+            >
+              {purchaseMutation.isPending ? "Processing..." : "Confirm Purchase"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

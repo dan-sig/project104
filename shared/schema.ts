@@ -509,3 +509,21 @@ export const insertProgramPurchaseSchema = createInsertSchema(programPurchases).
 
 export type InsertProgramPurchase = z.infer<typeof insertProgramPurchaseSchema>;
 export type ProgramPurchase = typeof programPurchases.$inferSelect;
+
+// TABLE: trainerClients - Explicit trainer-client roster linkage
+// Created when a client purchases a trainer program
+export const trainerClients = pgTable("trainer_clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(),
+  clientId: varchar("client_id").notNull(), // User ID of client (buyer)
+  addedDate: timestamp("added_date").defaultNow(),
+  sourcePurchaseId: varchar("source_purchase_id"), // Reference to purchase that created this relationship
+});
+
+export const insertTrainerClientSchema = createInsertSchema(trainerClients).omit({
+  id: true,
+  addedDate: true,
+});
+
+export type InsertTrainerClient = z.infer<typeof insertTrainerClientSchema>;
+export type TrainerClient = typeof trainerClients.$inferSelect;
