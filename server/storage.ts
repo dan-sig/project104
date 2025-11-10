@@ -37,6 +37,12 @@ import {
   type InsertWorkoutSet,
   type TrainerCustomExercise,
   type InsertTrainerCustomExercise,
+  type TrainerProgram,
+  type InsertTrainerProgram,
+  type TrainerProgramWorkout,
+  type InsertTrainerProgramWorkout,
+  type TrainerProgramExercise,
+  type InsertTrainerProgramExercise,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -102,6 +108,20 @@ export interface IStorage {
   getTrainerCustomExercise(id: string): Promise<TrainerCustomExercise | undefined>;
   updateTrainerCustomExercise(id: string, updates: Partial<TrainerCustomExercise>): Promise<TrainerCustomExercise | undefined>;
   deleteTrainerCustomExercise(id: string): Promise<void>;
+  
+  getTrainerPrograms(trainerId: string): Promise<TrainerProgram[]>;
+  getTrainerProgram(id: string): Promise<TrainerProgram | undefined>;
+  createTrainerProgram(program: InsertTrainerProgram): Promise<TrainerProgram>;
+  updateTrainerProgram(id: string, updates: Partial<TrainerProgram>): Promise<TrainerProgram | undefined>;
+  deleteTrainerProgram(id: string): Promise<void>;
+  
+  createTrainerProgramWorkout(workout: InsertTrainerProgramWorkout): Promise<TrainerProgramWorkout>;
+  getTrainerProgramWorkouts(programId: string): Promise<TrainerProgramWorkout[]>;
+  deleteTrainerProgramWorkouts(programId: string): Promise<void>;
+  
+  createTrainerProgramExercise(exercise: InsertTrainerProgramExercise): Promise<TrainerProgramExercise>;
+  getWorkoutExercisesForTrainer(workoutId: string): Promise<TrainerProgramExercise[]>;
+  deleteWorkoutExercises(workoutId: string): Promise<void>;
 }
 
 
@@ -116,6 +136,9 @@ import {
   workoutSessions, 
   workoutSets,
   trainerCustomExercises,
+  trainerPrograms,
+  trainerProgramWorkouts,
+  trainerProgramExercises,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 
@@ -668,6 +691,75 @@ export class DbStorage implements IStorage {
 
   async deleteTrainerCustomExercise(id: string): Promise<void> {
     await db.delete(trainerCustomExercises).where(eq(trainerCustomExercises.id, id));
+  }
+
+  // ==========================================
+  // TRAINER PROGRAM OPERATIONS
+  // ==========================================
+  async getTrainerPrograms(trainerId: string): Promise<TrainerProgram[]> {
+    return db.select().from(trainerPrograms)
+      .where(eq(trainerPrograms.trainerId, trainerId))
+      .orderBy(desc(trainerPrograms.createdAt));
+  }
+
+  async getTrainerProgram(id: string): Promise<TrainerProgram | undefined> {
+    const result = await db.select().from(trainerPrograms)
+      .where(eq(trainerPrograms.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async createTrainerProgram(program: InsertTrainerProgram): Promise<TrainerProgram> {
+    const result = await db.insert(trainerPrograms).values(program).returning();
+    return result[0];
+  }
+
+  async updateTrainerProgram(id: string, updates: Partial<TrainerProgram>): Promise<TrainerProgram | undefined> {
+    const result = await db.update(trainerPrograms)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(trainerPrograms.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrainerProgram(id: string): Promise<void> {
+    await db.delete(trainerPrograms).where(eq(trainerPrograms.id, id));
+  }
+
+  // ==========================================
+  // TRAINER PROGRAM WORKOUT OPERATIONS
+  // ==========================================
+  async createTrainerProgramWorkout(workout: InsertTrainerProgramWorkout): Promise<TrainerProgramWorkout> {
+    const result = await db.insert(trainerProgramWorkouts).values(workout).returning();
+    return result[0];
+  }
+
+  async getTrainerProgramWorkouts(programId: string): Promise<TrainerProgramWorkout[]> {
+    return db.select().from(trainerProgramWorkouts)
+      .where(eq(trainerProgramWorkouts.trainerProgramId, programId))
+      .orderBy(trainerProgramWorkouts.orderIndex);
+  }
+
+  async deleteTrainerProgramWorkouts(programId: string): Promise<void> {
+    await db.delete(trainerProgramWorkouts).where(eq(trainerProgramWorkouts.trainerProgramId, programId));
+  }
+
+  // ==========================================
+  // TRAINER PROGRAM EXERCISE OPERATIONS
+  // ==========================================
+  async createTrainerProgramExercise(exercise: InsertTrainerProgramExercise): Promise<TrainerProgramExercise> {
+    const result = await db.insert(trainerProgramExercises).values(exercise).returning();
+    return result[0];
+  }
+
+  async getWorkoutExercisesForTrainer(workoutId: string): Promise<TrainerProgramExercise[]> {
+    return db.select().from(trainerProgramExercises)
+      .where(eq(trainerProgramExercises.trainerWorkoutId, workoutId))
+      .orderBy(trainerProgramExercises.orderIndex);
+  }
+
+  async deleteWorkoutExercises(workoutId: string): Promise<void> {
+    await db.delete(trainerProgramExercises).where(eq(trainerProgramExercises.trainerWorkoutId, workoutId));
   }
 }
 

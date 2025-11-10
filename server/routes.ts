@@ -3457,6 +3457,271 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // ==========================================
+  // TRAINER PROGRAM ROUTES
+  // ==========================================
+  // Endpoints for trainers to create and manage programs for sale
+
+  // GET /api/trainer/programs - Get all programs for authenticated trainer
+  app.get("/api/trainer/programs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const programs = await storage.getTrainerPrograms(userId);
+      res.json(programs);
+    } catch (error) {
+      console.error("Error fetching trainer programs:", error);
+      res.status(500).json({ error: "Failed to fetch programs" });
+    }
+  });
+
+  // POST /api/trainer/programs - Create a new program
+  app.post("/api/trainer/programs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { insertTrainerProgramSchema } = await import("@shared/schema");
+
+      // Validate request body
+      const validatedData = insertTrainerProgramSchema.parse(req.body);
+
+      // Verify the trainer is creating for themselves
+      if (validatedData.trainerId !== userId) {
+        return res.status(403).json({ error: "Cannot create programs for other trainers" });
+      }
+
+      const program = await storage.createTrainerProgram(validatedData);
+      res.status(201).json(program);
+    } catch (error) {
+      console.error("Error creating trainer program:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid program data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create program" });
+    }
+  });
+
+  // GET /api/trainer/programs/:id - Get a single program with workouts and exercises
+  app.get("/api/trainer/programs/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const program = await storage.getTrainerProgram(id);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+
+      // Verify ownership
+      if (program.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to access this program" });
+      }
+
+      res.json(program);
+    } catch (error) {
+      console.error("Error fetching trainer program:", error);
+      res.status(500).json({ error: "Failed to fetch program" });
+    }
+  });
+
+  // PATCH /api/trainer/programs/:id - Update a program
+  app.patch("/api/trainer/programs/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      // Get existing program to verify ownership
+      const existingProgram = await storage.getTrainerProgram(id);
+      if (!existingProgram) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+
+      if (existingProgram.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to update this program" });
+      }
+
+      // Create partial schema excluding immutable fields
+      const partialProgramSchema = z.object({
+        name: z.string().optional(),
+        description: z.string().nullable().optional(),
+        basedOnTemplate: z.string().nullable().optional(),
+        difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+        durationWeeks: z.number().optional(),
+        daysPerWeek: z.number().optional(),
+        price: z.number().optional(),
+        pricingType: z.enum(["one_time", "subscription"]).optional(),
+        isPublished: z.number().optional(),
+      });
+
+      // Validate and strip immutable fields
+      const validatedUpdates = partialProgramSchema.parse(req.body);
+
+      const program = await storage.updateTrainerProgram(id, validatedUpdates);
+      res.json(program);
+    } catch (error) {
+      console.error("Error updating trainer program:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid update data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update program" });
+    }
+  });
+
+  // DELETE /api/trainer/programs/:id - Delete a program
+  app.delete("/api/trainer/programs/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const existingProgram = await storage.getTrainerProgram(id);
+      if (!existingProgram) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+
+      if (existingProgram.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to delete this program" });
+      }
+
+      await storage.deleteTrainerProgram(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting trainer program:", error);
+      res.status(500).json({ error: "Failed to delete program" });
+    }
+  });
+
+  // ==========================================
+  // TRAINER PROGRAM WORKOUT & EXERCISE ROUTES
+  // ==========================================
+  
+  // POST /api/trainer/programs/:id/workouts - Bulk create workouts with exercises
+  app.post("/api/trainer/programs/:id/workouts", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: programId } = req.params;
+      
+      // Verify program ownership
+      const program = await storage.getTrainerProgram(programId);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+      if (program.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to modify this program" });
+      }
+
+      const { workouts } = req.body; // Array of {weekNumber, dayNumber, workoutName, description, movementFocus, estimatedDuration, orderIndex, exercises: [...]}
+      
+      if (!Array.isArray(workouts) || workouts.length === 0) {
+        return res.status(400).json({ error: "Workouts array is required" });
+      }
+
+      const createdWorkouts = [];
+      
+      // Create each workout and its exercises
+      for (const workoutData of workouts) {
+        const { exercises: exerciseList, ...workoutFields } = workoutData;
+        
+        // Create workout
+        const workout = await storage.createTrainerProgramWorkout({
+          trainerProgramId: programId,
+          ...workoutFields,
+        });
+        
+        // Create exercises for this workout
+        const createdExercises = [];
+        if (Array.isArray(exerciseList)) {
+          for (const exercise of exerciseList) {
+            const createdExercise = await storage.createTrainerProgramExercise({
+              trainerWorkoutId: workout.id,
+              ...exercise,
+            });
+            createdExercises.push(createdExercise);
+          }
+        }
+        
+        createdWorkouts.push({ ...workout, exercises: createdExercises });
+      }
+      
+      res.status(201).json(createdWorkouts);
+    } catch (error) {
+      console.error("Error creating program workouts:", error);
+      res.status(500).json({ error: "Failed to create workouts" });
+    }
+  });
+
+  // GET /api/trainer/programs/:id/workouts - Get all workouts for a program
+  app.get("/api/trainer/programs/:id/workouts", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: programId } = req.params;
+      
+      // Verify program ownership
+      const program = await storage.getTrainerProgram(programId);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+      if (program.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to access this program" });
+      }
+
+      const workouts = await storage.getTrainerProgramWorkouts(programId);
+      
+      // Fetch exercises for each workout
+      const workoutsWithExercises = await Promise.all(
+        workouts.map(async (workout) => {
+          const exercises = await storage.getWorkoutExercisesForTrainer(workout.id);
+          return { ...workout, exercises };
+        })
+      );
+      
+      res.json(workoutsWithExercises);
+    } catch (error) {
+      console.error("Error fetching program workouts:", error);
+      res.status(500).json({ error: "Failed to fetch workouts" });
+    }
+  });
+
+  // DELETE /api/trainer/programs/:id/workouts - Delete all workouts for a program
+  app.delete("/api/trainer/programs/:id/workouts", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: programId } = req.params;
+      
+      // Verify program ownership
+      const program = await storage.getTrainerProgram(programId);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+      if (program.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to modify this program" });
+      }
+
+      // First, get all workouts to delete their exercises
+      const workouts = await storage.getTrainerProgramWorkouts(programId);
+      for (const workout of workouts) {
+        await storage.deleteWorkoutExercises(workout.id);
+      }
+      
+      // Then delete the workouts themselves
+      await storage.deleteTrainerProgramWorkouts(programId);
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting program workouts:", error);
+      res.status(500).json({ error: "Failed to delete workouts" });
+    }
+  });
+
+  // GET /api/exercises - Get all system exercises
+  app.get("/api/exercises", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const exercises = await storage.getAllExercises();
+      res.json(exercises);
+    } catch (error) {
+      console.error("Error fetching exercises:", error);
+      res.status(500).json({ error: "Failed to fetch exercises" });
+    }
+  });
+
   // AI Recommendation routes
   app.post("/api/ai/progression-recommendation", isAuthenticated, async (req: any, res: Response) => {
     try {
