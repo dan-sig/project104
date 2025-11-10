@@ -3652,6 +3652,14 @@ Provide a helpful, motivating response that addresses their question using this 
   app.get("/api/trainer/clients", isAuthenticated, async (req: any, res: Response) => {
     try {
       const trainerId = req.user.claims.sub;
+      
+      // Development mode: Return mock data if flag is enabled
+      if (process.env.ENABLE_FAKE_ROSTER === "true") {
+        const { mockTrainerRoster } = await import("@shared/mocks/trainerRoster");
+        console.log("[DEV-MODE] Returning mock trainer roster data");
+        return res.json(mockTrainerRoster);
+      }
+      
       const clients = await storage.getTrainerClientsWithPrograms(trainerId);
       res.json(clients);
     } catch (error) {
