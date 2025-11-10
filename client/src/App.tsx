@@ -38,6 +38,9 @@ import Landing from "./pages/Landing";
 import About from "./pages/About";
 import HowItWorks from "./pages/HowItWorks";
 import SmartProgression from "./pages/SmartProgression";
+import TrainerDashboard from "./pages/trainer/TrainerDashboard";
+import ClientDetail from "./pages/trainer/ClientDetail";
+import { TrainerDataProvider } from "./contexts/TrainerDataContext";
 
 function OnboardingFlow() {
   const [, setLocation] = useLocation();
@@ -474,6 +477,14 @@ function AppRoutes() {
             <SmartProgression />
           </Route>
 
+          <Route path="/trainer/client/:id">
+            <ClientDetail />
+          </Route>
+
+          <Route path="/trainer">
+            <TrainerDashboard />
+          </Route>
+
           <Route path="/">
             <Landing />
           </Route>
@@ -496,7 +507,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppRoutes />
+        <TrainerDataProvider>
+          <AppRoutes />
+        </TrainerDataProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

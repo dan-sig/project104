@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Target, TrendingUp, Calendar, Zap, Award, Brain, Repeat, Clock, Activity, Luggage, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 import morphitLogo from "@assets/31FDE9D6-272E-4F80-9D02-C546AEF4F1A8_1762631595796.png";
+import { RoleSelectionDialog } from "@/components/RoleSelectionDialog";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -55,12 +58,17 @@ export default function Landing() {
                 size="lg"
                 variant="outline"
                 className="text-lg px-8 h-14 w-full sm:w-auto"
-                onClick={() => window.location.href = "/api/login"}
+                onClick={() => setShowRoleDialog(true)}
                 data-testid="button-login"
               >
                 Log In
               </Button>
             </div>
+
+            <RoleSelectionDialog 
+              open={showRoleDialog} 
+              onOpenChange={setShowRoleDialog}
+            />
           </div>
         </div>
       </div>
