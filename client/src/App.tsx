@@ -40,6 +40,7 @@ import HowItWorks from "./pages/HowItWorks";
 import SmartProgression from "./pages/SmartProgression";
 import TrainerDashboard from "./pages/trainer/TrainerDashboard";
 import ClientDetail from "./pages/trainer/ClientDetail";
+import ProgramBuilder from "./pages/trainer/ProgramBuilder";
 import { TrainerDataProvider } from "./contexts/TrainerDataContext";
 
 function OnboardingFlow() {
@@ -475,6 +476,14 @@ function AppRoutes() {
 
           <Route path="/science">
             <SmartProgression />
+          </Route>
+
+          <Route path="/trainer/programs/new">
+            {(params) => <ProgramBuilder mode="scratch" />}
+          </Route>
+
+          <Route path="/trainer/programs/template">
+            {(params) => <ProgramBuilder mode="template" />}
           </Route>
 
           <Route path="/trainer/client/:id">
