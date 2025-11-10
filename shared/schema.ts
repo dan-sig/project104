@@ -570,3 +570,65 @@ export const trainerSalesMetricsSchema = z.object({
 });
 
 export type TrainerSalesMetrics = z.infer<typeof trainerSalesMetricsSchema>;
+
+// ==========================================
+// TRAINER PROFILE & INVITE SYSTEM
+// ==========================================
+
+// TABLE: trainerProfiles - Trainer-specific profile data (1:1 with users)
+// Created during trainer onboarding flow
+export const trainerProfiles = pgTable("trainer_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  bio: text("bio"),
+  yearsExperience: integer("years_experience"),
+  specialties: text("specialties").array().default(sql`array[]::text[]`),
+  certifications: text("certifications").array().default(sql`array[]::text[]`),
+  socialLinks: json("social_links").$type<{ instagram?: string; website?: string; linkedin?: string }>(),
+  onboardingStatus: text("onboarding_status").notNull().default("pending"), // pending | bio_complete | expertise_complete | completed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTrainerProfileSchema = createInsertSchema(trainerProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  onboardingStatus: z.enum(["pending", "bio_complete", "expertise_complete", "completed"]).default("pending"),
+  socialLinks: z.object({
+    instagram: z.string().optional(),
+    website: z.string().url().optional(),
+    linkedin: z.string().optional(),
+  }).optional(),
+});
+
+export type InsertTrainerProfile = z.infer<typeof insertTrainerProfileSchema>;
+export type TrainerProfile = typeof trainerProfiles.$inferSelect;
+
+// TABLE: trainerInviteLinks - Client invite link system
+// Trainers generate shareable links to invite clients
+export const trainerInviteLinks = pgTable("trainer_invite_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(),
+  code: varchar("code").notNull(), // Unique invite code (e.g., "TRAIN-ABC123")
+  customMessage: text("custom_message"),
+  targetProgramId: varchar("target_program_id"), // Optional: Pre-select specific program
+  maxUses: integer("max_uses"), // null = unlimited
+  currentUses: integer("current_uses").notNull().default(0),
+  expiresAt: timestamp("expires_at"), // null = never expires
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("trainer_invite_code_unique").on(table.trainerId, table.code),
+]);
+
+export const insertTrainerInviteLinkSchema = createInsertSchema(trainerInviteLinks).omit({
+  id: true,
+  currentUses: true,
+  lastUsedAt: true,
+  createdAt: true,
+});
+
+export type InsertTrainerInviteLink = z.infer<typeof insertTrainerInviteLinkSchema>;
+export type TrainerInviteLink = typeof trainerInviteLinks.$inferSelect;
