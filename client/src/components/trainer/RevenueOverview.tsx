@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 import { useTrainerData } from '@/contexts/TrainerDataContext';
 
 export function RevenueOverview() {
@@ -19,51 +19,35 @@ export function RevenueOverview() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 mb-6" data-testid="revenue-overview">
-      <Card data-testid="card-total-revenue">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="text-total-revenue">
-            {formatCurrency(totalRevenue)}
+    <Card data-testid="revenue-overview">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          Revenue Overview
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div className="grid grid-cols-3 gap-6">
+          <div>
+            <div className="text-2xl font-bold" data-testid="text-total-revenue">
+              {formatCurrency(totalRevenue)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Total Earnings</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Combined monthly + annual commissions
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card data-testid="card-monthly-revenue">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Monthly Recurring Revenue</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="text-monthly-revenue">
-            {formatCurrency(monthlyRevenue)}
+          <div>
+            <div className="text-2xl font-bold" data-testid="text-monthly-revenue">
+              {formatCurrency(monthlyRevenue)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">MRR</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Paid monthly from active subscribers
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card data-testid="card-annual-revenue">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Annual Revenue</CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="text-annual-revenue">
-            {formatCurrency(annualRevenue)}
+          <div>
+            <div className="text-2xl font-bold" data-testid="text-annual-revenue">
+              {formatCurrency(annualRevenue)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Annual Revenue</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Paid annually from active subscribers
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
