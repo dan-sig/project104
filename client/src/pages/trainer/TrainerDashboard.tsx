@@ -4,6 +4,7 @@ import { useTrainerData } from "@/contexts/TrainerDataContext";
 import { useLocation } from "wouter";
 import { MessageCircle, AlertTriangle, TrendingUp, Users } from "lucide-react";
 import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
+import { RevenueOverview } from "@/components/trainer/RevenueOverview";
 
 export default function TrainerDashboard() {
   const { clients, getClientFeedback, getUnreadMessages } = useTrainerData();
@@ -38,6 +39,9 @@ export default function TrainerDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Revenue Overview */}
+        <RevenueOverview />
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
