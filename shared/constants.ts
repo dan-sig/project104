@@ -148,7 +148,7 @@ export type WorkoutRole = typeof WORKOUT_ROLES[number];
 
 // Exercise Difficulty Levels
 export const DIFFICULTY_LEVELS = [
-  'basic',
+  'beginner',
   'intermediate', 
   'advanced'
 ] as const;
@@ -167,3 +167,83 @@ export const DEFAULT_TEMPO_BY_ROLE: Record<WorkoutRole, TempoNotation> = {
   core: '2-0-2-0',
   cardio: '1-0-1-0'
 };
+
+// Muscle Groups
+export const MUSCLE_GROUPS = [
+  'abs',
+  'arms',
+  'back',
+  'biceps',
+  'calves',
+  'cardio',
+  'chest',
+  'core',
+  'erectors',
+  'forearms',
+  'front delts',
+  'full body',
+  'glutes',
+  'grip',
+  'hamstrings',
+  'hip_flexors',
+  'hips',
+  'lats',
+  'legs',
+  'obliques',
+  'quadriceps',
+  'quads',
+  'rear delts',
+  'rear_delts',
+  'serratus',
+  'shoulders',
+  'side delts',
+  'traps',
+  'triceps',
+  'upper back',
+  'upper_back'
+] as const;
+export type MuscleGroup = typeof MUSCLE_GROUPS[number];
+
+// Equipment Types
+export const EQUIPMENT_TYPES = [
+  'barbell',
+  'dumbbell',
+  'kettlebell',
+  'resistance_band',
+  'pull_up_bar',
+  'bench',
+  'squat_rack',
+  'cable_machine',
+  'smith_machine',
+  'leg_press',
+  'rowing_machine',
+  'treadmill',
+  'bike',
+  'elliptical',
+  'jump_rope',
+  'medicine_ball',
+  'foam_roller',
+  'suspension_trainer',
+  'bodyweight',
+  'other'
+] as const;
+export type EquipmentType = typeof EQUIPMENT_TYPES[number];
+
+// Exercise Categories
+export const EXERCISE_CATEGORIES = [
+  'warmup',
+  'power',
+  'compound',
+  'isolation',
+  'core',
+  'cardio'
+] as const;
+export type ExerciseCategory = typeof EXERCISE_CATEGORIES[number];
+
+// Tracking Types
+export const TRACKING_TYPES = [
+  'reps',
+  'duration',
+  'both'
+] as const;
+export type TrackingType = typeof TRACKING_TYPES[number];

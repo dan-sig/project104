@@ -3357,6 +3357,106 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // ==========================================
+  // TRAINER CUSTOM EXERCISE ROUTES
+  // ==========================================
+  // Endpoints for trainers to create and manage custom exercises for their programs
+
+  // GET /api/trainer/custom-exercises - Get all custom exercises for authenticated trainer
+  app.get("/api/trainer/custom-exercises/:trainerId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { trainerId } = req.params;
+
+      // Verify the trainer is requesting their own exercises
+      if (userId !== trainerId) {
+        return res.status(403).json({ error: "Not authorized to access these exercises" });
+      }
+
+      const exercises = await storage.getTrainerCustomExercises(trainerId);
+      res.json(exercises);
+    } catch (error) {
+      console.error("Error fetching custom exercises:", error);
+      res.status(500).json({ error: "Failed to fetch custom exercises" });
+    }
+  });
+
+  // POST /api/trainer/custom-exercises - Create a new custom exercise
+  app.post("/api/trainer/custom-exercises", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { insertTrainerCustomExerciseSchema } = await import("@shared/schema");
+
+      // Validate request body
+      const validatedData = insertTrainerCustomExerciseSchema.parse(req.body);
+
+      // Verify the trainer is creating for themselves
+      if (validatedData.trainerId !== userId) {
+        return res.status(403).json({ error: "Cannot create exercises for other trainers" });
+      }
+
+      const exercise = await storage.createTrainerCustomExercise(validatedData);
+      res.status(201).json(exercise);
+    } catch (error) {
+      console.error("Error creating custom exercise:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid exercise data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create custom exercise" });
+    }
+  });
+
+  // PATCH /api/trainer/custom-exercises/:id - Update a custom exercise
+  app.patch("/api/trainer/custom-exercises/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      // Get existing exercise to verify ownership
+      const existingExercise = await storage.getTrainerCustomExercise(id);
+      if (!existingExercise) {
+        return res.status(404).json({ error: "Exercise not found" });
+      }
+
+      // Verify the trainer owns this exercise
+      if (existingExercise.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to update this exercise" });
+      }
+
+      // Update with partial data
+      const exercise = await storage.updateTrainerCustomExercise(id, req.body);
+      res.json(exercise);
+    } catch (error) {
+      console.error("Error updating custom exercise:", error);
+      res.status(500).json({ error: "Failed to update custom exercise" });
+    }
+  });
+
+  // DELETE /api/trainer/custom-exercises/:id - Delete a custom exercise
+  app.delete("/api/trainer/custom-exercises/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      // Get existing exercise to verify ownership
+      const existingExercise = await storage.getTrainerCustomExercise(id);
+      if (!existingExercise) {
+        return res.status(404).json({ error: "Exercise not found" });
+      }
+
+      // Verify the trainer owns this exercise
+      if (existingExercise.trainerId !== userId) {
+        return res.status(403).json({ error: "Not authorized to delete this exercise" });
+      }
+
+      await storage.deleteTrainerCustomExercise(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting custom exercise:", error);
+      res.status(500).json({ error: "Failed to delete custom exercise" });
+    }
+  });
+
   // AI Recommendation routes
   app.post("/api/ai/progression-recommendation", isAuthenticated, async (req: any, res: Response) => {
     try {

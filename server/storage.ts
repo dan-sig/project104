@@ -35,6 +35,8 @@ import {
   type InsertWorkoutSession,
   type WorkoutSet,
   type InsertWorkoutSet,
+  type TrainerCustomExercise,
+  type InsertTrainerCustomExercise,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -94,6 +96,12 @@ export interface IStorage {
   getSessionSets(sessionId: string): Promise<WorkoutSet[]>;
   getUserRecentSets(userId: string, exerciseId: string, limit: number): Promise<WorkoutSet[]>;
   updateWorkoutSet(id: string, updates: Partial<WorkoutSet>): Promise<WorkoutSet | undefined>;
+  
+  createTrainerCustomExercise(exercise: InsertTrainerCustomExercise): Promise<TrainerCustomExercise>;
+  getTrainerCustomExercises(trainerId: string): Promise<TrainerCustomExercise[]>;
+  getTrainerCustomExercise(id: string): Promise<TrainerCustomExercise | undefined>;
+  updateTrainerCustomExercise(id: string, updates: Partial<TrainerCustomExercise>): Promise<TrainerCustomExercise | undefined>;
+  deleteTrainerCustomExercise(id: string): Promise<void>;
 }
 
 
@@ -106,7 +114,8 @@ import {
   programWorkouts, 
   programExercises, 
   workoutSessions, 
-  workoutSets 
+  workoutSets,
+  trainerCustomExercises,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 
@@ -626,6 +635,39 @@ export class DbStorage implements IStorage {
   async updateWorkoutSet(id: string, updates: Partial<WorkoutSet>): Promise<WorkoutSet | undefined> {
     const result = await db.update(workoutSets).set(updates).where(eq(workoutSets.id, id)).returning();
     return result[0];
+  }
+
+  // ==========================================
+  // TRAINER CUSTOM EXERCISE OPERATIONS
+  // ==========================================
+  async createTrainerCustomExercise(exercise: InsertTrainerCustomExercise): Promise<TrainerCustomExercise> {
+    const result = await db.insert(trainerCustomExercises).values(exercise).returning();
+    return result[0];
+  }
+
+  async getTrainerCustomExercises(trainerId: string): Promise<TrainerCustomExercise[]> {
+    return db.select().from(trainerCustomExercises)
+      .where(eq(trainerCustomExercises.trainerId, trainerId))
+      .orderBy(desc(trainerCustomExercises.createdAt));
+  }
+
+  async getTrainerCustomExercise(id: string): Promise<TrainerCustomExercise | undefined> {
+    const result = await db.select().from(trainerCustomExercises)
+      .where(eq(trainerCustomExercises.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateTrainerCustomExercise(id: string, updates: Partial<TrainerCustomExercise>): Promise<TrainerCustomExercise | undefined> {
+    const result = await db.update(trainerCustomExercises)
+      .set(updates)
+      .where(eq(trainerCustomExercises.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrainerCustomExercise(id: string): Promise<void> {
+    await db.delete(trainerCustomExercises).where(eq(trainerCustomExercises.id, id));
   }
 }
 

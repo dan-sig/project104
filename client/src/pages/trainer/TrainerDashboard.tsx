@@ -1,11 +1,22 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
 import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 import { RevenueOverview } from "@/components/trainer/RevenueOverview";
 import { ClientStats } from "@/components/trainer/ClientStats";
+import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
+import { useQuery } from "@tanstack/react-query";
+import type { User } from "@shared/schema";
 
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<string>("clients");
+
+  // Get current user ID for custom exercises
+  const { data: user, isLoading: isLoadingUser } = useQuery<User>({
+    queryKey: ["/api/auth/user"],
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,11 +49,31 @@ export default function TrainerDashboard() {
           <ClientStats />
         </div>
 
-        {/* Client Roster Table */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Client Roster</h2>
-          <TrainerRosterTable />
-        </div>
+        {/* Main Content with Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList data-testid="tabs-trainer-dashboard">
+            <TabsTrigger value="clients" data-testid="tab-clients">Client Roster</TabsTrigger>
+            <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="clients" className="mt-6">
+            <TrainerRosterTable />
+          </TabsContent>
+
+          <TabsContent value="exercises" className="mt-6">
+            {isLoadingUser ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Loading...
+              </div>
+            ) : user ? (
+              <CustomExerciseLibrary trainerId={user.id} />
+            ) : (
+              <div className="text-center py-12 text-destructive">
+                Error loading user information
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
