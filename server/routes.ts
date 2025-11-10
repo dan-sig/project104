@@ -3644,6 +3644,38 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // ==========================================
+  // TRAINER DASHBOARD ROUTES
+  // ==========================================
+
+  // GET /api/trainer/clients - Get trainer's client roster with program details
+  app.get("/api/trainer/clients", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const clients = await storage.getTrainerClientsWithPrograms(trainerId);
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching trainer clients:", error);
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  // GET /api/trainer/sales - Get trainer's sales metrics and purchase history
+  app.get("/api/trainer/sales", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const salesMetrics = await storage.getTrainerSalesMetrics(trainerId);
+      res.json(salesMetrics);
+    } catch (error) {
+      console.error("Error fetching trainer sales:", error);
+      res.status(500).json({ error: "Failed to fetch sales metrics" });
+    }
+  });
+
+  // ==========================================
+  // PUBLIC PROGRAM ROUTES
+  // ==========================================
+
   // POST /api/programs/purchase - Simulate program purchase
   app.post("/api/programs/purchase", async (req: Request, res: Response) => {
     try {

@@ -47,6 +47,8 @@ import {
   type InsertProgramPurchase,
   type TrainerClient,
   type InsertTrainerClient,
+  type TrainerClientRoster,
+  type TrainerSalesMetrics,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -135,6 +137,8 @@ export interface IStorage {
   
   createTrainerClient(client: InsertTrainerClient): Promise<TrainerClient>;
   getTrainerClients(trainerId: string): Promise<TrainerClient[]>;
+  getTrainerClientsWithPrograms(trainerId: string): Promise<TrainerClientRoster[]>;
+  getTrainerSalesMetrics(trainerId: string): Promise<TrainerSalesMetrics>;
 }
 
 
@@ -780,6 +784,96 @@ export class DbStorage implements IStorage {
     return db.select().from(trainerClients)
       .where(eq(trainerClients.trainerId, trainerId))
       .orderBy(desc(trainerClients.addedDate));
+  }
+
+  async getTrainerClientsWithPrograms(trainerId: string): Promise<TrainerClientRoster[]> {
+    // Join trainerClients → users → programPurchases → trainerPrograms → workoutPrograms
+    const results = await db
+      .select({
+        clientId: trainerClients.clientId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        clientEmail: users.email,
+        programId: workoutPrograms.id,
+        programName: trainerPrograms.name,
+        purchaseDate: programPurchases.purchaseDate,
+        subscriptionType: programPurchases.pricingType,
+        purchasePrice: programPurchases.purchasePrice,
+        trainerEarnings: programPurchases.trainerEarnings,
+        addedDate: trainerClients.addedDate,
+      })
+      .from(trainerClients)
+      .leftJoin(users, eq(trainerClients.clientId, users.id))
+      .leftJoin(programPurchases, eq(trainerClients.sourcePurchaseId, programPurchases.id))
+      .leftJoin(trainerPrograms, eq(programPurchases.trainerProgramId, trainerPrograms.id))
+      .leftJoin(workoutPrograms, eq(programPurchases.workoutProgramId, workoutPrograms.id))
+      .where(eq(trainerClients.trainerId, trainerId))
+      .orderBy(desc(trainerClients.addedDate));
+
+    return results.map(r => ({
+      clientId: r.clientId,
+      clientName: [r.firstName, r.lastName].filter(Boolean).join(" ") || "Unknown",
+      clientEmail: r.clientEmail || "",
+      programId: r.programId,
+      programName: r.programName,
+      purchaseDate: r.purchaseDate?.toISOString() || new Date().toISOString(),
+      subscriptionType: (r.subscriptionType as "one_time" | "subscription") || "one_time",
+      purchasePrice: r.purchasePrice || 0,
+      trainerEarnings: r.trainerEarnings || 0,
+      addedDate: r.addedDate?.toISOString() || new Date().toISOString(),
+    }));
+  }
+
+  async getTrainerSalesMetrics(trainerId: string): Promise<TrainerSalesMetrics> {
+    // Fetch all purchases for this trainer
+    const purchases = await db
+      .select({
+        id: programPurchases.id,
+        programName: trainerPrograms.name,
+        buyerFirstName: users.firstName,
+        buyerLastName: users.lastName,
+        buyerEmail: users.email,
+        purchasePrice: programPurchases.purchasePrice,
+        platformFee: programPurchases.platformFee,
+        trainerEarnings: programPurchases.trainerEarnings,
+        pricingType: programPurchases.pricingType,
+        status: programPurchases.status,
+        purchaseDate: programPurchases.purchaseDate,
+      })
+      .from(programPurchases)
+      .leftJoin(trainerPrograms, eq(programPurchases.trainerProgramId, trainerPrograms.id))
+      .leftJoin(users, eq(programPurchases.buyerId, users.id))
+      .where(eq(programPurchases.trainerId, trainerId))
+      .orderBy(desc(programPurchases.purchaseDate));
+
+    // Calculate revenue metrics
+    const totalRevenue = purchases.reduce((sum, p) => sum + (p.trainerEarnings || 0), 0);
+    const monthlyRevenue = purchases
+      .filter(p => p.pricingType === "subscription")
+      .reduce((sum, p) => sum + (p.trainerEarnings || 0), 0);
+    const annualRevenue = monthlyRevenue * 12;
+    const totalPurchases = purchases.length;
+    const activePlans = purchases.filter(p => p.status === "completed").length;
+
+    return {
+      totalRevenue,
+      monthlyRevenue,
+      annualRevenue,
+      totalPurchases,
+      activePlans,
+      purchases: purchases.map(p => ({
+        id: p.id,
+        programName: p.programName || "Unknown Program",
+        buyerName: [p.buyerFirstName, p.buyerLastName].filter(Boolean).join(" ") || "Unknown",
+        buyerEmail: p.buyerEmail || "",
+        purchasePrice: p.purchasePrice || 0,
+        platformFee: p.platformFee || 0,
+        trainerEarnings: p.trainerEarnings || 0,
+        pricingType: (p.pricingType as "one_time" | "subscription") || "one_time",
+        status: (p.status as "completed" | "refunded") || "completed",
+        purchaseDate: p.purchaseDate?.toISOString() || new Date().toISOString(),
+      })),
+    };
   }
 
   // ==========================================

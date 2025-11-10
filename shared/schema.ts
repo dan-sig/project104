@@ -527,3 +527,46 @@ export const insertTrainerClientSchema = createInsertSchema(trainerClients).omit
 
 export type InsertTrainerClient = z.infer<typeof insertTrainerClientSchema>;
 export type TrainerClient = typeof trainerClients.$inferSelect;
+
+// ==========================================
+// TRAINER DASHBOARD API RESPONSE TYPES
+// ==========================================
+
+// Response type for GET /api/trainer/clients
+export const trainerClientRosterSchema = z.object({
+  clientId: z.string(),
+  clientName: z.string(),
+  clientEmail: z.string(),
+  programId: z.string().nullable(),
+  programName: z.string().nullable(),
+  purchaseDate: z.string(), // ISO timestamp
+  subscriptionType: z.enum(["one_time", "subscription"]),
+  purchasePrice: z.number(),
+  trainerEarnings: z.number(), // 80% of purchase price
+  addedDate: z.string(), // ISO timestamp
+});
+
+export type TrainerClientRoster = z.infer<typeof trainerClientRosterSchema>;
+
+// Response type for GET /api/trainer/sales
+export const trainerSalesMetricsSchema = z.object({
+  totalRevenue: z.number(), // Total trainer earnings (all-time)
+  monthlyRevenue: z.number(), // MRR from subscription purchases
+  annualRevenue: z.number(), // ARR from annual subscriptions
+  totalPurchases: z.number(),
+  activePlans: z.number(), // One-time + active subscriptions
+  purchases: z.array(z.object({
+    id: z.string(),
+    programName: z.string(),
+    buyerName: z.string(),
+    buyerEmail: z.string(),
+    purchasePrice: z.number(),
+    platformFee: z.number(),
+    trainerEarnings: z.number(),
+    pricingType: z.enum(["one_time", "subscription"]),
+    status: z.enum(["completed", "refunded"]),
+    purchaseDate: z.string(), // ISO timestamp
+  })),
+});
+
+export type TrainerSalesMetrics = z.infer<typeof trainerSalesMetricsSchema>;
