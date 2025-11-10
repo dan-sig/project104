@@ -64,9 +64,11 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
     clients,
     getClient,
     getClientWorkouts: (clientId) => getClientWorkouts(clientId),
-    getClientFeedback: (clientId) => getClientFeedback(clientId).filter(f => !f.resolved),
-    getClientMessages: (clientId) => getClientMessages(clientId),
-    getUnreadMessages: (clientId) => getUnreadMessages(clientId),
+    getClientFeedback: (clientId) => feedback.filter(f => f.clientId === clientId && !f.resolved),
+    getClientMessages: (clientId) => messages.filter(m => m.clientId === clientId).sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    ),
+    getUnreadMessages: (clientId) => messages.filter(m => m.clientId === clientId && !m.read),
     sendMessage,
     resolveFeedback,
     updateExercise

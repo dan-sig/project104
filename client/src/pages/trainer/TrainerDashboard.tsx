@@ -8,12 +8,12 @@ import { MessageCircle, AlertTriangle, Calendar, TrendingUp, Users } from "lucid
 import { formatDistanceToNow } from "date-fns";
 
 export default function TrainerDashboard() {
-  const { clients } = useTrainerData();
+  const { clients, getClientFeedback, getUnreadMessages } = useTrainerData();
   const [, setLocation] = useLocation();
 
   const activeClients = clients.filter(c => c.status === 'active');
-  const totalAlerts = clients.reduce((sum, c) => sum + c.alertsCount, 0);
-  const totalUnread = clients.reduce((sum, c) => sum + c.unreadMessages, 0);
+  const totalAlerts = clients.reduce((sum, c) => sum + getClientFeedback(c.id).length, 0);
+  const totalUnread = clients.reduce((sum, c) => sum + getUnreadMessages(c.id).length, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,47 +99,51 @@ export default function TrainerDashboard() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Client Roster</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clients.map((client) => (
-              <Card
-                key={client.id}
-                className="hover-elevate cursor-pointer"
-                onClick={() => setLocation(`/trainer/client/${client.id}`)}
-                data-testid={`card-client-${client.id}`}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {client.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{client.name}</h3>
-                        <p className="text-sm text-muted-foreground">{client.email}</p>
+            {clients.map((client) => {
+              const alertsCount = getClientFeedback(client.id).length;
+              const unreadCount = getUnreadMessages(client.id).length;
+              
+              return (
+                <Card
+                  key={client.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => setLocation(`/trainer/client/${client.id}`)}
+                  data-testid={`card-client-${client.id}`}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            {client.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold">{client.name}</h3>
+                          <p className="text-sm text-muted-foreground">{client.email}</p>
+                        </div>
                       </div>
+                      <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
+                        {client.status}
+                      </Badge>
                     </div>
-                    <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
-                      {client.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Alerts and Messages */}
-                  <div className="flex gap-2">
-                    {client.alertsCount > 0 && (
-                      <Badge variant="destructive" className="gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {client.alertsCount} alerts
-                      </Badge>
-                    )}
-                    {client.unreadMessages > 0 && (
-                      <Badge variant="default" className="gap-1">
-                        <MessageCircle className="h-3 w-3" />
-                        {client.unreadMessages} new
-                      </Badge>
-                    )}
-                  </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Alerts and Messages */}
+                    <div className="flex gap-2">
+                      {alertsCount > 0 && (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {alertsCount} alerts
+                        </Badge>
+                      )}
+                      {unreadCount > 0 && (
+                        <Badge variant="default" className="gap-1">
+                          <MessageCircle className="h-3 w-3" />
+                          {unreadCount} new
+                        </Badge>
+                      )}
+                    </div>
 
                   {/* Current Program */}
                   {client.currentProgram && (
@@ -163,7 +167,8 @@ export default function TrainerDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
