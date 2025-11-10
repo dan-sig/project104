@@ -345,3 +345,167 @@ export type WorkoutSession = typeof workoutSessions.$inferSelect;
 export type PatchWorkoutSession = z.infer<typeof patchWorkoutSessionSchema>;
 export type InsertWorkoutSet = z.infer<typeof insertWorkoutSetSchema>;
 export type WorkoutSet = typeof workoutSets.$inferSelect;
+
+// ==========================================
+// TRAINER MARKETPLACE TABLES
+// ==========================================
+// These tables enable trainers to create and sell custom programs
+
+// TABLE: trainerCustomExercises
+// Exercises created by trainers for their programs
+// Separate from system exercises but follows same structure
+export const trainerCustomExercises = pgTable("trainer_custom_exercises", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(), // User ID of the trainer
+  name: text("name").notNull(),
+  description: text("description"),
+  videoUrl: text("video_url"), // Trainer's own video content
+  movementPattern: text("movement_pattern").notNull(),
+  equipment: text("equipment").array().notNull(),
+  difficulty: text("difficulty").notNull(),
+  primaryMuscles: text("primary_muscles").array().notNull(),
+  secondaryMuscles: text("secondary_muscles").array(),
+  exerciseCategory: text("exercise_category").notNull(), // warmup | power | compound | isolation | core | cardio
+  trackingType: text("tracking_type").notNull().default("reps"), // reps | duration | both
+  recommendedTempo: text("recommended_tempo"),
+  formTips: text("form_tips").array(),
+  isScalable: integer("is_scalable").notNull().default(1), // Can this exercise progress?
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTrainerCustomExerciseSchema = createInsertSchema(trainerCustomExercises).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  exerciseCategory: z.enum(["warmup", "power", "compound", "isolation", "core", "cardio"]),
+  trackingType: z.enum(["reps", "duration", "both"]).default("reps"),
+  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+});
+
+export type InsertTrainerCustomExercise = z.infer<typeof insertTrainerCustomExerciseSchema>;
+export type TrainerCustomExercise = typeof trainerCustomExercises.$inferSelect;
+
+// TABLE: trainerPrograms
+// Programs created by trainers to sell to clients
+// Can be built from scratch or based on system templates
+export const trainerPrograms = pgTable("trainer_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  slug: text("slug").notNull().unique(), // URL-friendly identifier: trainer-name/program-slug
+  basedOnTemplate: text("based_on_template"), // null = from scratch, or "flow" | "build" | "strong" | "move"
+  difficulty: text("difficulty").notNull(),
+  durationWeeks: integer("duration_weeks").notNull().default(4),
+  daysPerWeek: integer("days_per_week").notNull(),
+  price: real("price").notNull(), // Price in dollars
+  pricingType: text("pricing_type").notNull().default("one_time"), // one_time | subscription
+  isPublished: integer("is_published").notNull().default(0),
+  totalSales: integer("total_sales").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTrainerProgramSchema = createInsertSchema(trainerPrograms).omit({
+  id: true,
+  totalSales: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  pricingType: z.enum(["one_time", "subscription"]).default("one_time"),
+  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+});
+
+export type InsertTrainerProgram = z.infer<typeof insertTrainerProgramSchema>;
+export type TrainerProgram = typeof trainerPrograms.$inferSelect;
+
+// TABLE: trainerProgramWorkouts
+// Workouts within trainer-created programs
+// Similar to programWorkouts but for marketplace programs
+export const trainerProgramWorkouts = pgTable("trainer_program_workouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerProgramId: varchar("trainer_program_id").notNull(),
+  weekNumber: integer("week_number").notNull(), // 1-4 for microcycle
+  dayNumber: integer("day_number").notNull(), // 1, 2, 3... based on daysPerWeek
+  workoutName: text("workout_name").notNull(),
+  description: text("description"),
+  movementFocus: text("movement_focus").array(),
+  estimatedDuration: integer("estimated_duration"), // Minutes
+  orderIndex: integer("order_index").notNull(), // Overall position in program
+});
+
+export const insertTrainerProgramWorkoutSchema = createInsertSchema(trainerProgramWorkouts).omit({
+  id: true,
+});
+
+export type InsertTrainerProgramWorkout = z.infer<typeof insertTrainerProgramWorkoutSchema>;
+export type TrainerProgramWorkout = typeof trainerProgramWorkouts.$inferSelect;
+
+// TABLE: trainerProgramExercises
+// Exercises within trainer program workouts
+// Can reference system exercises OR trainer custom exercises
+export const trainerProgramExercises = pgTable("trainer_program_exercises", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerWorkoutId: varchar("trainer_workout_id").notNull(),
+  exerciseId: varchar("exercise_id"), // System exercise ID (can be null if custom)
+  customExerciseId: varchar("custom_exercise_id"), // Trainer custom exercise ID (can be null if system)
+  equipment: text("equipment"),
+  orderIndex: integer("order_index").notNull(),
+  sets: integer("sets").notNull(),
+  repsMin: integer("reps_min"),
+  repsMax: integer("reps_max"),
+  recommendedWeight: real("recommended_weight"),
+  durationSeconds: integer("duration_seconds"),
+  workSeconds: integer("work_seconds"),
+  restSeconds: integer("rest_seconds").notNull(),
+  tempo: text("tempo"),
+  targetRPE: integer("target_rpe"),
+  targetRIR: integer("target_rir"),
+  notes: text("notes"),
+  supersetGroup: text("superset_group"),
+  supersetOrder: integer("superset_order"),
+});
+
+export const insertTrainerProgramExerciseSchema = createInsertSchema(trainerProgramExercises).omit({
+  id: true,
+}).refine(
+  (data) => {
+    // Exactly one of exerciseId or customExerciseId must be set
+    return (data.exerciseId !== null && data.exerciseId !== undefined && !data.customExerciseId) ||
+           (data.customExerciseId !== null && data.customExerciseId !== undefined && !data.exerciseId);
+  },
+  {
+    message: "Exactly one of exerciseId or customExerciseId must be provided",
+  }
+);
+
+export type InsertTrainerProgramExercise = z.infer<typeof insertTrainerProgramExerciseSchema>;
+export type TrainerProgramExercise = typeof trainerProgramExercises.$inferSelect;
+
+// TABLE: programPurchases
+// Tracks purchases of trainer programs
+// Links buyer to program and tracks revenue split
+export const programPurchases = pgTable("program_purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerProgramId: varchar("trainer_program_id").notNull(),
+  trainerId: varchar("trainer_id").notNull(),
+  buyerId: varchar("buyer_id").notNull(), // User ID of purchaser
+  purchasePrice: real("purchase_price").notNull(),
+  platformFee: real("platform_fee").notNull(), // 20% of price
+  trainerEarnings: real("trainer_earnings").notNull(), // 80% of price
+  pricingType: text("pricing_type").notNull(), // one_time | subscription
+  status: text("status").notNull().default("completed"), // completed | refunded
+  purchaseDate: timestamp("purchase_date").defaultNow(),
+  workoutProgramId: varchar("workout_program_id"), // Generated program ID for the buyer
+});
+
+export const insertProgramPurchaseSchema = createInsertSchema(programPurchases).omit({
+  id: true,
+  purchaseDate: true,
+}).extend({
+  pricingType: z.enum(["one_time", "subscription"]),
+  status: z.enum(["completed", "refunded"]).default("completed"),
+});
+
+export type InsertProgramPurchase = z.infer<typeof insertProgramPurchaseSchema>;
+export type ProgramPurchase = typeof programPurchases.$inferSelect;
