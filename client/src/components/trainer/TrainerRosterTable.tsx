@@ -34,6 +34,7 @@ export function TrainerRosterTable() {
   const [, setLocation] = useLocation();
   const {
     clients,
+    feedback,
     getUnreadMessages,
     getClientFeedback,
     getClientCompletionRate,
@@ -56,7 +57,7 @@ export function TrainerRosterTable() {
       nextWorkout: getClientNextWorkout(client.id),
       streak: getClientStreak(client.id)
     }));
-  }, [clients, getUnreadMessages, getClientFeedback, getClientCompletionRate, getClientNextWorkout, getClientStreak]);
+  }, [clients, feedback, getUnreadMessages, getClientFeedback, getClientCompletionRate, getClientNextWorkout, getClientStreak]);
 
   const programTypes = useMemo(() => {
     const types = new Set<string>();

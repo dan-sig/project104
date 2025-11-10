@@ -26,6 +26,7 @@ interface ExerciseUpdate {
 
 interface TrainerDataContextValue {
   clients: MockClient[];
+  feedback: MockFeedback[];
   getClient: (id: string) => MockClient | undefined;
   getClientWorkouts: (clientId: string) => MockWorkout[];
   getClientFeedback: (clientId: string) => MockFeedback[];
@@ -276,6 +277,7 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
 
   const value: TrainerDataContextValue = {
     clients,
+    feedback,
     getClient,
     getClientWorkouts: (clientId) => workouts.filter(w => w.clientId === clientId),
     getClientFeedback: (clientId) => feedback.filter(f => f.clientId === clientId && !f.resolved),
