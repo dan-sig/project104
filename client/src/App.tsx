@@ -39,11 +39,13 @@ import About from "./pages/About";
 import HowItWorks from "./pages/HowItWorks";
 import SmartProgression from "./pages/SmartProgression";
 import TrainerDashboard from "./pages/trainer/TrainerDashboard";
+import TrainerOnboarding from "./pages/trainer/TrainerOnboarding";
 import ClientDetail from "./pages/trainer/ClientDetail";
 import ProgramBuilder from "./pages/trainer/ProgramBuilder";
 import TrainerProgramsList from "./pages/trainer/TrainerProgramsList";
 import ProgramBuyPage from "./pages/ProgramBuyPage";
 import { TrainerDataProvider } from "./contexts/TrainerDataContext";
+import { TrainerOnboardingGate } from "./components/trainer/TrainerOnboardingGate";
 
 function OnboardingFlow() {
   const [, setLocation] = useLocation();
@@ -480,24 +482,38 @@ function AppRoutes() {
             <SmartProgression />
           </Route>
 
+          <Route path="/trainer/onboarding">
+            <TrainerOnboarding />
+          </Route>
+
           <Route path="/trainer/programs/new">
-            {(params) => <ProgramBuilder mode="scratch" />}
+            <TrainerOnboardingGate>
+              <ProgramBuilder mode="scratch" />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/trainer/programs/template">
-            {(params) => <ProgramBuilder mode="template" />}
+            <TrainerOnboardingGate>
+              <ProgramBuilder mode="template" />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/trainer/programs">
-            <TrainerProgramsList />
+            <TrainerOnboardingGate>
+              <TrainerProgramsList />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/trainer/client/:id">
-            <ClientDetail />
+            <TrainerOnboardingGate>
+              <ClientDetail />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/trainer">
-            <TrainerDashboard />
+            <TrainerOnboardingGate>
+              <TrainerDashboard />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/programs/buy/:slug">

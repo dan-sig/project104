@@ -3681,6 +3681,182 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
+  // TRAINER PROFILE ROUTES
+  // ==========================================
+  // Endpoints for trainer onboarding and profile management
+
+  // GET /api/trainer/profile - Get trainer's profile
+  app.get("/api/trainer/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getTrainerProfile(userId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching trainer profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // POST /api/trainer/profile - Create trainer profile (onboarding)
+  app.post("/api/trainer/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { insertTrainerProfileSchema } = await import("@shared/schema");
+
+      // Check if profile already exists
+      const existingProfile = await storage.getTrainerProfile(userId);
+      if (existingProfile) {
+        return res.status(409).json({ error: "Profile already exists" });
+      }
+
+      // Inject userId from authenticated session before validation
+      const validatedData = insertTrainerProfileSchema.parse({
+        ...req.body,
+        userId,
+      });
+
+      const profile = await storage.createTrainerProfile(validatedData);
+      res.status(201).json(profile);
+    } catch (error) {
+      console.error("Error creating trainer profile:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid profile data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create profile" });
+    }
+  });
+
+  // PATCH /api/trainer/profile - Update trainer profile
+  app.patch("/api/trainer/profile", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Verify profile exists
+      const existingProfile = await storage.getTrainerProfile(userId);
+      if (!existingProfile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+
+      const updatedProfile = await storage.updateTrainerProfile(userId, req.body);
+      res.json(updatedProfile);
+    } catch (error) {
+      console.error("Error updating trainer profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // ==========================================
+  // TRAINER INVITE LINK ROUTES
+  // ==========================================
+  // Endpoints for managing client invite links
+
+  // GET /api/trainer/invites - List trainer's invite links
+  app.get("/api/trainer/invites", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const invites = await storage.getTrainerInviteLinks(trainerId);
+      res.json(invites);
+    } catch (error) {
+      console.error("Error fetching trainer invites:", error);
+      res.status(500).json({ error: "Failed to fetch invites" });
+    }
+  });
+
+  // POST /api/trainer/invites - Create new invite link
+  app.post("/api/trainer/invites", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { insertTrainerInviteLinkSchema } = await import("@shared/schema");
+
+      // Validate request body
+      const validatedData = insertTrainerInviteLinkSchema.parse(req.body);
+
+      // Ensure trainerId matches authenticated user
+      if (validatedData.trainerId !== trainerId) {
+        return res.status(403).json({ error: "Cannot create invite for another trainer" });
+      }
+
+      const invite = await storage.createTrainerInviteLink(validatedData);
+      res.status(201).json(invite);
+    } catch (error) {
+      console.error("Error creating trainer invite:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid invite data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create invite" });
+    }
+  });
+
+  // ==========================================
+  // PUBLIC INVITE ROUTES
+  // ==========================================
+  // Public endpoints for invite landing pages
+
+  // GET /api/invites/:code - Get invite details by code (public)
+  app.get("/api/invites/:code", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.params;
+      const invite = await storage.getTrainerInviteLinkByCode(code);
+
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+
+      // Check if invite is valid
+      if (invite.expiresAt && new Date() > invite.expiresAt) {
+        return res.status(410).json({ error: "Invite has expired" });
+      }
+
+      if (invite.maxUses !== null && invite.currentUses >= invite.maxUses) {
+        return res.status(410).json({ error: "Invite has reached maximum uses" });
+      }
+
+      // Fetch trainer profile
+      const trainerProfile = await storage.getTrainerProfile(invite.trainerId);
+      const trainer = await storage.getUser(invite.trainerId);
+
+      res.json({
+        invite,
+        trainer: {
+          id: trainer?.id,
+          name: [trainer?.firstName, trainer?.lastName].filter(Boolean).join(" ") || "Trainer",
+          email: trainer?.email,
+          profile: trainerProfile,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching invite:", error);
+      res.status(500).json({ error: "Failed to fetch invite" });
+    }
+  });
+
+  // POST /api/invites/:code/track - Track invite link usage
+  app.post("/api/invites/:code/track", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.params;
+      await storage.trackInviteLinkUse(code);
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Error tracking invite use:", error);
+      if (error.message?.includes("expired")) {
+        return res.status(410).json({ error: error.message });
+      }
+      if (error.message?.includes("maximum uses")) {
+        return res.status(410).json({ error: error.message });
+      }
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to track invite use" });
+    }
+  });
+
+  // ==========================================
   // PUBLIC PROGRAM ROUTES
   // ==========================================
 

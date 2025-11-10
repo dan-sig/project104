@@ -965,13 +965,42 @@ export class DbStorage implements IStorage {
   }
 
   async trackInviteLinkUse(code: string): Promise<void> {
+    // First, fetch the invite to check validity
+    const invite = await this.getTrainerInviteLinkByCode(code);
+    
+    if (!invite) {
+      throw new Error("Invite link not found");
+    }
+
+    // Check if invite has expired
+    if (invite.expiresAt && new Date() > invite.expiresAt) {
+      throw new Error("Invite link has expired");
+    }
+
+    // Check if invite has reached max uses
+    if (invite.maxUses !== null && invite.currentUses >= invite.maxUses) {
+      throw new Error("Invite link has reached maximum uses");
+    }
+
+    // Atomically increment usage if all checks pass
     await db
       .update(trainerInviteLinks)
       .set({
         currentUses: sql`${trainerInviteLinks.currentUses} + 1`,
         lastUsedAt: new Date(),
       })
-      .where(eq(trainerInviteLinks.code, code));
+      .where(
+        and(
+          eq(trainerInviteLinks.code, code),
+          // Double-check constraints in the update to prevent race conditions
+          invite.maxUses !== null 
+            ? sql`${trainerInviteLinks.currentUses} < ${invite.maxUses}`
+            : sql`true`,
+          invite.expiresAt 
+            ? sql`${trainerInviteLinks.expiresAt} > NOW()`
+            : sql`true`
+        )
+      );
   }
 }
 
