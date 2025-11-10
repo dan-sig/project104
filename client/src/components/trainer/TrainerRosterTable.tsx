@@ -11,7 +11,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, MessageCircle, AlertTriangle, TrendingUp, Calendar } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Search, MessageCircle, AlertTriangle, TrendingUp, Calendar, X } from 'lucide-react';
 import { useTrainerData } from '@/contexts/TrainerDataContext';
 import { format } from 'date-fns';
 import type { MockClient } from '@/data/trainerMockData';
@@ -28,6 +35,9 @@ export function TrainerRosterTable() {
   } = useTrainerData();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [alertFilter, setAlertFilter] = useState<string>('all');
+  const [programFilter, setProgramFilter] = useState<string>('all');
 
   const enrichedClients = useMemo(() => {
     return clients.map(client => ({
@@ -40,17 +50,51 @@ export function TrainerRosterTable() {
     }));
   }, [clients, getUnreadMessages, getClientFeedback, getClientCompletionRate, getClientNextWorkout, getClientStreak]);
 
+  const programTypes = useMemo(() => {
+    const types = new Set<string>();
+    clients.forEach(client => {
+      if (client.currentProgram) {
+        const type = client.currentProgram.split(' - ')[0];
+        types.add(type);
+      }
+    });
+    return Array.from(types).sort();
+  }, [clients]);
+
   const filteredClients = useMemo(() => {
-    return enrichedClients.filter(client => 
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [enrichedClients, searchQuery]);
+    return enrichedClients.filter(client => {
+      const matchesSearch = 
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
+      
+      const matchesAlerts = 
+        alertFilter === 'all' ||
+        (alertFilter === 'has-alerts' && client.alertCount > 0) ||
+        (alertFilter === 'no-alerts' && client.alertCount === 0);
+      
+      const matchesProgram = 
+        programFilter === 'all' || 
+        (client.currentProgram && client.currentProgram.startsWith(programFilter));
+      
+      return matchesSearch && matchesStatus && matchesAlerts && matchesProgram;
+    });
+  }, [enrichedClients, searchQuery, statusFilter, alertFilter, programFilter]);
+
+  const hasActiveFilters = statusFilter !== 'all' || alertFilter !== 'all' || programFilter !== 'all' || searchQuery !== '';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setAlertFilter('all');
+    setProgramFilter('all');
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name or email..."
@@ -60,6 +104,53 @@ export function TrainerRosterTable() {
             data-testid="input-search-clients"
           />
         </div>
+
+        <Select value={programFilter} onValueChange={setProgramFilter}>
+          <SelectTrigger className="w-[180px]" data-testid="select-program-filter">
+            <SelectValue placeholder="All Programs" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Programs</SelectItem>
+            {programTypes.map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={alertFilter} onValueChange={setAlertFilter}>
+          <SelectTrigger className="w-[140px]" data-testid="select-alert-filter">
+            <SelectValue placeholder="All Alerts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Alerts</SelectItem>
+            <SelectItem value="has-alerts">Has Alerts</SelectItem>
+            <SelectItem value="no-alerts">No Alerts</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="gap-2"
+            data-testid="button-clear-filters"
+          >
+            <X className="h-4 w-4" />
+            Clear
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border">
