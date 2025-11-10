@@ -18,10 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Search, MessageCircle, AlertTriangle, TrendingUp, Calendar, X } from 'lucide-react';
 import { useTrainerData } from '@/contexts/TrainerDataContext';
-import { format } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
 import type { MockClient } from '@/data/trainerMockData';
+import type { DateRange } from 'react-day-picker';
 
 export function TrainerRosterTable() {
   const [, setLocation] = useLocation();
@@ -38,6 +45,7 @@ export function TrainerRosterTable() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [alertFilter, setAlertFilter] = useState<string>('all');
   const [programFilter, setProgramFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   const enrichedClients = useMemo(() => {
     return clients.map(client => ({
@@ -78,17 +86,24 @@ export function TrainerRosterTable() {
         programFilter === 'all' || 
         (client.currentProgram && client.currentProgram.startsWith(programFilter));
       
-      return matchesSearch && matchesStatus && matchesAlerts && matchesProgram;
+      const matchesDateRange = !dateRange?.from || !dateRange?.to || !client.lastWorkout ||
+        isWithinInterval(new Date(client.lastWorkout), {
+          start: dateRange.from,
+          end: dateRange.to
+        });
+      
+      return matchesSearch && matchesStatus && matchesAlerts && matchesProgram && matchesDateRange;
     });
-  }, [enrichedClients, searchQuery, statusFilter, alertFilter, programFilter]);
+  }, [enrichedClients, searchQuery, statusFilter, alertFilter, programFilter, dateRange]);
 
-  const hasActiveFilters = statusFilter !== 'all' || alertFilter !== 'all' || programFilter !== 'all' || searchQuery !== '';
+  const hasActiveFilters = statusFilter !== 'all' || alertFilter !== 'all' || programFilter !== 'all' || searchQuery !== '' || dateRange !== undefined;
 
   const clearFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setAlertFilter('all');
     setProgramFilter('all');
+    setDateRange(undefined);
   };
 
   return (
@@ -138,6 +153,34 @@ export function TrainerRosterTable() {
             <SelectItem value="no-alerts">No Alerts</SelectItem>
           </SelectContent>
         </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[240px] justify-start gap-2" data-testid="button-date-filter">
+              <Calendar className="h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d, yyyy')}
+                  </>
+                ) : (
+                  format(dateRange.from, 'MMM d, yyyy')
+                )
+              ) : (
+                'Last Workout Date'
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              mode="range"
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
 
         {hasActiveFilters && (
           <Button
