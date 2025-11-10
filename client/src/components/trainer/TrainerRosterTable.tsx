@@ -108,6 +108,8 @@ export function TrainerRosterTable() {
     return [...filteredClients].sort((a, b) => {
       let aValue: any;
       let bValue: any;
+      let aHasValue = true;
+      let bHasValue = true;
 
       switch (sortColumn) {
         case 'name':
@@ -117,6 +119,8 @@ export function TrainerRosterTable() {
         case 'program':
           aValue = a.currentProgram?.toLowerCase() || '';
           bValue = b.currentProgram?.toLowerCase() || '';
+          aHasValue = !!a.currentProgram;
+          bHasValue = !!b.currentProgram;
           break;
         case 'status':
           aValue = a.status;
@@ -127,41 +131,51 @@ export function TrainerRosterTable() {
           bValue = b.subscriptionType;
           break;
         case 'daysPerWeek':
-          aValue = a.daysPerWeek;
-          bValue = b.daysPerWeek;
+          aValue = a.daysPerWeek || 0;
+          bValue = b.daysPerWeek || 0;
           break;
         case 'lastWorkout':
           aValue = a.lastWorkout ? new Date(a.lastWorkout).getTime() : 0;
           bValue = b.lastWorkout ? new Date(b.lastWorkout).getTime() : 0;
+          aHasValue = !!a.lastWorkout;
+          bHasValue = !!b.lastWorkout;
           break;
         case 'completion':
-          aValue = a.completionRate;
-          bValue = b.completionRate;
+          aValue = a.completionRate || 0;
+          bValue = b.completionRate || 0;
           break;
         case 'messages':
-          aValue = a.unreadCount;
-          bValue = b.unreadCount;
+          aValue = a.unreadCount || 0;
+          bValue = b.unreadCount || 0;
           break;
         case 'alerts':
-          aValue = a.alertCount;
-          bValue = b.alertCount;
+          aValue = a.alertCount || 0;
+          bValue = b.alertCount || 0;
           break;
         case 'nextWorkout':
           aValue = a.nextWorkout ? new Date(a.nextWorkout.scheduledDate).getTime() : 0;
           bValue = b.nextWorkout ? new Date(b.nextWorkout.scheduledDate).getTime() : 0;
+          aHasValue = !!a.nextWorkout;
+          bHasValue = !!b.nextWorkout;
           break;
         case 'joined':
           aValue = new Date(a.joinedDate).getTime();
           bValue = new Date(b.joinedDate).getTime();
           break;
         case 'streak':
-          aValue = a.streak;
-          bValue = b.streak;
+          aValue = a.streak || 0;
+          bValue = b.streak || 0;
           break;
         default:
           return 0;
       }
 
+      // Handle null/missing values - always sort them to the end
+      if (!aHasValue && !bHasValue) return 0;
+      if (!aHasValue) return 1;
+      if (!bHasValue) return -1;
+
+      // Normal comparison
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
