@@ -15,6 +15,9 @@ export interface MockClient {
   daysPerWeek: number;
   sessionDuration: string;
   equipment: string[];
+  subscriptionType: 'monthly' | 'annual';
+  subscriptionPrice: number;
+  commissionRate: number;
 }
 
 export interface MockFeedback {
@@ -92,7 +95,10 @@ export const mockClients: MockClient[] = [
     goals: 'Build muscle and strength',
     daysPerWeek: 4,
     sessionDuration: '45-60 minutes',
-    equipment: ['Barbell', 'Dumbbells', 'Machines', 'Bench']
+    equipment: ['Barbell', 'Dumbbells', 'Machines', 'Bench'],
+    subscriptionType: 'annual',
+    subscriptionPrice: 299,
+    commissionRate: 0.20
   },
   {
     id: 'client-2',
@@ -108,7 +114,10 @@ export const mockClients: MockClient[] = [
     goals: 'Increase strength, improve athletic performance',
     daysPerWeek: 5,
     sessionDuration: '60-75 minutes',
-    equipment: ['Barbell', 'Dumbbells', 'Kettlebells', 'Pull-up Bar']
+    equipment: ['Barbell', 'Dumbbells', 'Kettlebells', 'Pull-up Bar'],
+    subscriptionType: 'monthly',
+    subscriptionPrice: 29,
+    commissionRate: 0.25
   },
   {
     id: 'client-3',
@@ -124,7 +133,10 @@ export const mockClients: MockClient[] = [
     goals: 'Weight loss and general fitness',
     daysPerWeek: 3,
     sessionDuration: '30-45 minutes',
-    equipment: ['Dumbbells', 'Resistance Bands', 'Yoga Mat']
+    equipment: ['Dumbbells', 'Resistance Bands', 'Yoga Mat'],
+    subscriptionType: 'monthly',
+    subscriptionPrice: 29,
+    commissionRate: 0.15
   },
   {
     id: 'client-4',
@@ -140,7 +152,10 @@ export const mockClients: MockClient[] = [
     goals: 'Mobility and longevity',
     daysPerWeek: 3,
     sessionDuration: '30-45 minutes',
-    equipment: ['Bodyweight', 'Resistance Bands', 'Foam Roller']
+    equipment: ['Bodyweight', 'Resistance Bands', 'Foam Roller'],
+    subscriptionType: 'annual',
+    subscriptionPrice: 299,
+    commissionRate: 0.18
   },
   {
     id: 'client-5',
@@ -156,7 +171,10 @@ export const mockClients: MockClient[] = [
     goals: 'Muscle gain and body recomposition',
     daysPerWeek: 4,
     sessionDuration: '45-60 minutes',
-    equipment: ['Barbell', 'Dumbbells', 'Machines', 'Cable Machine']
+    equipment: ['Barbell', 'Dumbbells', 'Machines', 'Cable Machine'],
+    subscriptionType: 'annual',
+    subscriptionPrice: 299,
+    commissionRate: 0.22
   }
 ];
 
