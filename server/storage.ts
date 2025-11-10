@@ -139,6 +139,15 @@ export interface IStorage {
   getTrainerClients(trainerId: string): Promise<TrainerClient[]>;
   getTrainerClientsWithPrograms(trainerId: string): Promise<TrainerClientRoster[]>;
   getTrainerSalesMetrics(trainerId: string): Promise<TrainerSalesMetrics>;
+  
+  getTrainerProfile(userId: string): Promise<TrainerProfile | undefined>;
+  createTrainerProfile(profile: InsertTrainerProfile): Promise<TrainerProfile>;
+  updateTrainerProfile(userId: string, updates: Partial<TrainerProfile>): Promise<TrainerProfile | undefined>;
+  
+  createTrainerInviteLink(invite: InsertTrainerInviteLink): Promise<TrainerInviteLink>;
+  getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]>;
+  getTrainerInviteLinkByCode(code: string): Promise<TrainerInviteLink | undefined>;
+  trackInviteLinkUse(code: string): Promise<void>;
 }
 
 
@@ -158,6 +167,8 @@ import {
   trainerProgramExercises,
   programPurchases,
   trainerClients,
+  trainerProfiles,
+  trainerInviteLinks,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 
@@ -910,6 +921,57 @@ export class DbStorage implements IStorage {
 
   async deleteWorkoutExercises(workoutId: string): Promise<void> {
     await db.delete(trainerProgramExercises).where(eq(trainerProgramExercises.trainerWorkoutId, workoutId));
+  }
+
+  // ==========================================
+  // TRAINER PROFILE OPERATIONS
+  // ==========================================
+  async getTrainerProfile(userId: string): Promise<TrainerProfile | undefined> {
+    const result = await db.select().from(trainerProfiles).where(eq(trainerProfiles.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createTrainerProfile(profile: InsertTrainerProfile): Promise<TrainerProfile> {
+    const result = await db.insert(trainerProfiles).values(profile).returning();
+    return result[0];
+  }
+
+  async updateTrainerProfile(userId: string, updates: Partial<TrainerProfile>): Promise<TrainerProfile | undefined> {
+    const result = await db
+      .update(trainerProfiles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(trainerProfiles.userId, userId))
+      .returning();
+    return result[0];
+  }
+
+  // ==========================================
+  // TRAINER INVITE LINK OPERATIONS
+  // ==========================================
+  async createTrainerInviteLink(invite: InsertTrainerInviteLink): Promise<TrainerInviteLink> {
+    const result = await db.insert(trainerInviteLinks).values(invite).returning();
+    return result[0];
+  }
+
+  async getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]> {
+    return db.select().from(trainerInviteLinks)
+      .where(eq(trainerInviteLinks.trainerId, trainerId))
+      .orderBy(desc(trainerInviteLinks.createdAt));
+  }
+
+  async getTrainerInviteLinkByCode(code: string): Promise<TrainerInviteLink | undefined> {
+    const result = await db.select().from(trainerInviteLinks).where(eq(trainerInviteLinks.code, code)).limit(1);
+    return result[0];
+  }
+
+  async trackInviteLinkUse(code: string): Promise<void> {
+    await db
+      .update(trainerInviteLinks)
+      .set({
+        currentUses: sql`${trainerInviteLinks.currentUses} + 1`,
+        lastUsedAt: new Date(),
+      })
+      .where(eq(trainerInviteLinks.code, code));
   }
 }
 
