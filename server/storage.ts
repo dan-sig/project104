@@ -122,6 +122,8 @@ export interface IStorage {
   createTrainerProgramExercise(exercise: InsertTrainerProgramExercise): Promise<TrainerProgramExercise>;
   getWorkoutExercisesForTrainer(workoutId: string): Promise<TrainerProgramExercise[]>;
   deleteWorkoutExercises(workoutId: string): Promise<void>;
+  
+  getPublicProgramBySlug(slug: string): Promise<TrainerProgram | undefined>;
 }
 
 
@@ -724,6 +726,13 @@ export class DbStorage implements IStorage {
 
   async deleteTrainerProgram(id: string): Promise<void> {
     await db.delete(trainerPrograms).where(eq(trainerPrograms.id, id));
+  }
+
+  async getPublicProgramBySlug(slug: string): Promise<TrainerProgram | undefined> {
+    const result = await db.select().from(trainerPrograms)
+      .where(eq(trainerPrograms.slug, slug))
+      .limit(1);
+    return result[0];
   }
 
   // ==========================================

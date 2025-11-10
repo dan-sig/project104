@@ -41,6 +41,8 @@ import SmartProgression from "./pages/SmartProgression";
 import TrainerDashboard from "./pages/trainer/TrainerDashboard";
 import ClientDetail from "./pages/trainer/ClientDetail";
 import ProgramBuilder from "./pages/trainer/ProgramBuilder";
+import TrainerProgramsList from "./pages/trainer/TrainerProgramsList";
+import ProgramBuyPage from "./pages/ProgramBuyPage";
 import { TrainerDataProvider } from "./contexts/TrainerDataContext";
 
 function OnboardingFlow() {
@@ -486,12 +488,20 @@ function AppRoutes() {
             {(params) => <ProgramBuilder mode="template" />}
           </Route>
 
+          <Route path="/trainer/programs">
+            <TrainerProgramsList />
+          </Route>
+
           <Route path="/trainer/client/:id">
             <ClientDetail />
           </Route>
 
           <Route path="/trainer">
             <TrainerDashboard />
+          </Route>
+
+          <Route path="/programs/buy/:slug">
+            <ProgramBuyPage />
           </Route>
 
           <Route path="/">

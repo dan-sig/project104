@@ -3555,6 +3555,19 @@ Provide a helpful, motivating response that addresses their question using this 
       // Validate and strip immutable fields
       const validatedUpdates = partialProgramSchema.parse(req.body);
 
+      // If trying to publish, validate requirements
+      if (validatedUpdates.isPublished === 1) {
+        const currentPrice = validatedUpdates.price ?? existingProgram.price;
+        if (!currentPrice || currentPrice <= 0) {
+          return res.status(400).json({ error: "Cannot publish program without a price" });
+        }
+
+        const workouts = await storage.getTrainerProgramWorkouts(id);
+        if (workouts.length === 0) {
+          return res.status(400).json({ error: "Cannot publish program without workouts" });
+        }
+      }
+
       const program = await storage.updateTrainerProgram(id, validatedUpdates);
       res.json(program);
     } catch (error) {
@@ -3586,6 +3599,48 @@ Provide a helpful, motivating response that addresses their question using this 
     } catch (error) {
       console.error("Error deleting trainer program:", error);
       res.status(500).json({ error: "Failed to delete program" });
+    }
+  });
+
+  // GET /api/programs/public/:slug - Public endpoint for viewing program by slug
+  app.get("/api/programs/public/:slug", async (req: Request, res: Response) => {
+    try {
+      const { slug } = req.params;
+
+      const program = await storage.getPublicProgramBySlug(slug);
+      if (!program) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+
+      // Only return published programs
+      if (!program.isPublished) {
+        return res.status(404).json({ error: "Program not found" });
+      }
+
+      // Get workouts and exercises for this program
+      const workouts = await storage.getTrainerProgramWorkouts(program.id);
+      const workoutsWithExercises = await Promise.all(
+        workouts.map(async (workout) => {
+          const exercises = await storage.getWorkoutExercisesForTrainer(workout.id);
+          return { ...workout, exercises };
+        })
+      );
+
+      // Get trainer info (minimal public info only - no PII)
+      const trainer = await storage.getUser(program.trainerId);
+
+      res.json({
+        ...program,
+        workouts: workoutsWithExercises,
+        trainer: trainer ? {
+          id: trainer.id,
+          // Only expose non-PII trainer info
+          // Could add a displayName field to users table in future
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching public program:", error);
+      res.status(500).json({ error: "Failed to fetch program" });
     }
   });
 
