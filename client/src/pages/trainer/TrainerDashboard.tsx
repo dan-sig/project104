@@ -6,6 +6,7 @@ import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 import { RevenueOverview } from "@/components/trainer/RevenueOverview";
 import { ClientStats } from "@/components/trainer/ClientStats";
 import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
+import { InviteManager } from "@/components/trainer/InviteManager";
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
@@ -61,6 +62,7 @@ export default function TrainerDashboard() {
             <TabsTrigger value="clients" data-testid="tab-clients">Client Roster</TabsTrigger>
             <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
             <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
+            <TabsTrigger value="invites" data-testid="tab-invites">Invite Links</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
@@ -102,6 +104,10 @@ export default function TrainerDashboard() {
                 Error loading user information
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="invites" className="mt-6">
+            <InviteManager />
           </TabsContent>
         </Tabs>
       </div>

@@ -3808,11 +3808,11 @@ Provide a helpful, motivating response that addresses their question using this 
       }
 
       // Check if invite is valid
-      if (invite.expiresAt && new Date() > invite.expiresAt) {
+      if (invite.expiresAt && new Date() > new Date(invite.expiresAt)) {
         return res.status(410).json({ error: "Invite has expired" });
       }
 
-      if (invite.maxUses !== null && invite.currentUses >= invite.maxUses) {
+      if (invite.maxUses !== null && invite.usageCount >= invite.maxUses) {
         return res.status(410).json({ error: "Invite has reached maximum uses" });
       }
 

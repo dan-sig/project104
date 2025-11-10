@@ -44,6 +44,7 @@ import ClientDetail from "./pages/trainer/ClientDetail";
 import ProgramBuilder from "./pages/trainer/ProgramBuilder";
 import TrainerProgramsList from "./pages/trainer/TrainerProgramsList";
 import ProgramBuyPage from "./pages/ProgramBuyPage";
+import InviteLanding from "./pages/InviteLanding";
 import { TrainerDataProvider } from "./contexts/TrainerDataContext";
 import { TrainerOnboardingGate } from "./components/trainer/TrainerOnboardingGate";
 
@@ -518,6 +519,10 @@ function AppRoutes() {
 
           <Route path="/programs/buy/:slug">
             <ProgramBuyPage />
+          </Route>
+
+          <Route path="/invite/:code">
+            <InviteLanding />
           </Route>
 
           <Route path="/">
