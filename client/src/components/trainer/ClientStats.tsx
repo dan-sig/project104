@@ -18,21 +18,21 @@ export function ClientStats() {
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
           <div>
-            <div className="text-2xl font-bold">{clients.length}</div>
+            <div className="text-2xl font-bold" data-testid="text-total-clients">{clients.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Total Clients</p>
           </div>
           <div>
-            <div className="text-2xl font-bold">{activeClients.length}</div>
+            <div className="text-2xl font-bold" data-testid="text-active-clients">{activeClients.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Active</p>
           </div>
           <div>
-            <div className="text-2xl font-bold">{totalAlerts}</div>
+            <div className="text-2xl font-bold" data-testid="text-total-alerts">{totalAlerts}</div>
             <p className="text-xs text-muted-foreground mt-1">Alerts</p>
           </div>
           <div>
-            <div className="text-2xl font-bold">{totalUnread}</div>
+            <div className="text-2xl font-bold" data-testid="text-unread-messages">{totalUnread}</div>
             <p className="text-xs text-muted-foreground mt-1">Messages</p>
           </div>
         </div>
