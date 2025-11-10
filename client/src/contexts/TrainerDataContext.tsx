@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import {
   mockClients,
   mockFeedback,
@@ -48,6 +48,7 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState(mockMessages);
   const [feedback, setFeedback] = useState(mockFeedback);
   const [workouts, setWorkouts] = useState(mockWorkouts);
+  const performanceAlertsGenerated = useRef(false);
 
   const getClient = useMemo(() => {
     return (id: string) => clients.find(c => c.id === id);
@@ -108,6 +109,136 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
     
     return streak;
   };
+
+  // Helper function to parse weight from string (e.g., "185 lbs" -> 185)
+  const parseWeight = (weightStr: string): number | null => {
+    const match = weightStr.match(/(\d+(\.\d+)?)/);
+    return match ? parseFloat(match[1]) : null;
+  };
+
+  // Helper function to parse rep range (e.g., "6-8" -> {min: 6, max: 8})
+  const parseReps = (repsStr: string): { min: number; max: number } | null => {
+    if (repsStr.toLowerCase() === 'bodyweight') return null;
+    const match = repsStr.match(/(\d+)(-(\d+))?/);
+    if (!match) return null;
+    const min = parseInt(match[1]);
+    const max = match[3] ? parseInt(match[3]) : min;
+    return { min, max };
+  };
+
+  // Generate and persist performance alerts on mount (using useEffect to avoid StrictMode duplicates)
+  useEffect(() => {
+    if (performanceAlertsGenerated.current) return;
+    
+    const allPerformanceAlerts: MockFeedback[] = [];
+    
+    workouts.forEach(workout => {
+      if (!workout.completed) return;
+      
+      workout.exercises.forEach(exercise => {
+        if (!exercise.loggedSets || exercise.loggedSets.length === 0) return;
+        
+        const prescribedWeight = parseWeight(exercise.weight);
+        const prescribedReps = parseReps(exercise.reps);
+        
+        exercise.loggedSets.forEach(loggedSet => {
+          const { setNumber, reps: loggedReps, weight: loggedWeight } = loggedSet;
+          
+          // Incomplete set (null or 0 reps)
+          if (loggedReps === null || loggedReps === 0) {
+            allPerformanceAlerts.push({
+              id: `perf-${workout.id}-${exercise.id}-${setNumber}-incomplete`,
+              clientId: workout.clientId,
+              workoutId: workout.id,
+              exerciseId: exercise.id,
+              exerciseName: exercise.name,
+              type: 'incomplete_set',
+              message: `Set ${setNumber} not completed (skipped or 0 reps)`,
+              date: workout.scheduledDate,
+              resolved: false,
+              setNumber,
+              prescribedValue: exercise.reps,
+              actualValue: '0'
+            });
+            return;
+          }
+          
+          // Weight-based alerts
+          if (prescribedWeight !== null && loggedWeight !== null) {
+            if (loggedWeight < prescribedWeight) {
+              allPerformanceAlerts.push({
+                id: `perf-${workout.id}-${exercise.id}-${setNumber}-underweight`,
+                clientId: workout.clientId,
+                workoutId: workout.id,
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                type: 'underperformed_weight',
+                message: `Set ${setNumber}: Did ${loggedWeight} lbs instead of prescribed ${prescribedWeight} lbs`,
+                date: workout.scheduledDate,
+                resolved: false,
+                setNumber,
+                prescribedValue: `${prescribedWeight} lbs`,
+                actualValue: `${loggedWeight} lbs`
+              });
+            } else if (loggedWeight > prescribedWeight) {
+              allPerformanceAlerts.push({
+                id: `perf-${workout.id}-${exercise.id}-${setNumber}-overweight`,
+                clientId: workout.clientId,
+                workoutId: workout.id,
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                type: 'overperformed_weight',
+                message: `Set ${setNumber}: Did ${loggedWeight} lbs (prescribed ${prescribedWeight} lbs) - Ready to progress!`,
+                date: workout.scheduledDate,
+                resolved: false,
+                setNumber,
+                prescribedValue: `${prescribedWeight} lbs`,
+                actualValue: `${loggedWeight} lbs`
+              });
+            }
+          }
+          
+          // Reps-based alerts
+          if (prescribedReps && loggedReps) {
+            if (loggedReps < prescribedReps.min) {
+              allPerformanceAlerts.push({
+                id: `perf-${workout.id}-${exercise.id}-${setNumber}-underreps`,
+                clientId: workout.clientId,
+                workoutId: workout.id,
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                type: 'underperformed_reps',
+                message: `Set ${setNumber}: Did ${loggedReps} reps (prescribed ${exercise.reps})`,
+                date: workout.scheduledDate,
+                resolved: false,
+                setNumber,
+                prescribedValue: exercise.reps,
+                actualValue: `${loggedReps}`
+              });
+            } else if (loggedReps > prescribedReps.max) {
+              allPerformanceAlerts.push({
+                id: `perf-${workout.id}-${exercise.id}-${setNumber}-overreps`,
+                clientId: workout.clientId,
+                workoutId: workout.id,
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                type: 'overperformed_reps',
+                message: `Set ${setNumber}: Did ${loggedReps} reps (prescribed ${exercise.reps}) - Ready to progress!`,
+                date: workout.scheduledDate,
+                resolved: false,
+                setNumber,
+                prescribedValue: exercise.reps,
+                actualValue: `${loggedReps}`
+              });
+            }
+          }
+        });
+      });
+    });
+    
+    setFeedback(prev => [...prev, ...allPerformanceAlerts]);
+    performanceAlertsGenerated.current = true;
+  }, [workouts]);
 
   const updateClientProgram = (clientId: string, newProgram: string) => {
     setClients(prev => prev.map(c => 

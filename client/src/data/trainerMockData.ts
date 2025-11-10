@@ -23,10 +23,15 @@ export interface MockFeedback {
   workoutId: string;
   exerciseId: string;
   exerciseName: string;
-  type: 'pain' | 'dislike' | 'too_heavy' | 'too_light' | 'form_issue';
+  type: 'pain' | 'dislike' | 'too_heavy' | 'too_light' | 'form_issue' | 
+        'underperformed_weight' | 'underperformed_reps' | 'incomplete_set' | 
+        'overperformed_weight' | 'overperformed_reps';
   message: string;
   date: string;
   resolved: boolean;
+  setNumber?: number;
+  prescribedValue?: string;
+  actualValue?: string;
 }
 
 export interface MockMessage {
@@ -36,6 +41,13 @@ export interface MockMessage {
   message: string;
   timestamp: string;
   read: boolean;
+}
+
+export interface MockLoggedSet {
+  setNumber: number;
+  reps: number | null;
+  weight: number | null;
+  rpe?: number;
 }
 
 export interface MockExercise {
@@ -51,6 +63,7 @@ export interface MockExercise {
   hasFeedback: boolean;
   feedbackType?: 'pain' | 'dislike' | 'too_heavy' | 'too_light';
   notes?: string;
+  loggedSets?: MockLoggedSet[];
 }
 
 export interface MockWorkout {
@@ -310,7 +323,13 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           restSeconds: 180,
           hasFeedback: true,
           feedbackType: 'pain',
-          notes: 'Sharp knee pain - needs attention'
+          notes: 'Sharp knee pain - needs attention',
+          loggedSets: [
+            { setNumber: 1, reps: 8, weight: 185 },
+            { setNumber: 2, reps: 7, weight: 185 },
+            { setNumber: 3, reps: 0, weight: null },
+            { setNumber: 4, reps: 0, weight: null }
+          ]
         },
         {
           id: 'ex-2',
@@ -319,7 +338,12 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           reps: '8-10',
           weight: '155 lbs',
           restSeconds: 120,
-          hasFeedback: false
+          hasFeedback: false,
+          loggedSets: [
+            { setNumber: 1, reps: 10, weight: 155 },
+            { setNumber: 2, reps: 9, weight: 155 },
+            { setNumber: 3, reps: 8, weight: 155 }
+          ]
         },
         {
           id: 'ex-8',
@@ -330,7 +354,12 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           restSeconds: 90,
           hasFeedback: true,
           feedbackType: 'dislike',
-          notes: 'Client dislikes this exercise'
+          notes: 'Client dislikes this exercise',
+          loggedSets: [
+            { setNumber: 1, reps: 8, weight: 35 },
+            { setNumber: 2, reps: 7, weight: 35 },
+            { setNumber: 3, reps: 6, weight: 35 }
+          ]
         },
         {
           id: 'ex-3',
@@ -368,7 +397,13 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           restSeconds: 150,
           hasFeedback: true,
           feedbackType: 'too_heavy',
-          notes: 'Weight too heavy for current strength level'
+          notes: 'Weight too heavy for current strength level',
+          loggedSets: [
+            { setNumber: 1, reps: 6, weight: 85 },
+            { setNumber: 2, reps: 5, weight: 85 },
+            { setNumber: 3, reps: 4, weight: 85 },
+            { setNumber: 4, reps: 3, weight: 85 }
+          ]
         },
         {
           id: 'ex-6',
@@ -377,7 +412,13 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           reps: '8-10',
           weight: '115 lbs',
           restSeconds: 120,
-          hasFeedback: false
+          hasFeedback: false,
+          loggedSets: [
+            { setNumber: 1, reps: 12, weight: 125 },
+            { setNumber: 2, reps: 11, weight: 125 },
+            { setNumber: 3, reps: 10, weight: 125 },
+            { setNumber: 4, reps: 10, weight: 125 }
+          ]
         },
         {
           id: 'ex-7',
@@ -474,7 +515,13 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           restSeconds: 120,
           hasFeedback: true,
           feedbackType: 'too_light',
-          notes: 'Ready for weight increase'
+          notes: 'Ready for weight increase',
+          loggedSets: [
+            { setNumber: 1, reps: 12, weight: 105 },
+            { setNumber: 2, reps: 11, weight: 105 },
+            { setNumber: 3, reps: 11, weight: 105 },
+            { setNumber: 4, reps: 10, weight: 105 }
+          ]
         },
         {
           id: 'ex-16',
@@ -483,7 +530,13 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
           reps: '10-12',
           weight: '110 lbs',
           restSeconds: 90,
-          hasFeedback: false
+          hasFeedback: false,
+          loggedSets: [
+            { setNumber: 1, reps: 12, weight: 110 },
+            { setNumber: 2, reps: 11, weight: 110 },
+            { setNumber: 3, reps: 10, weight: 110 },
+            { setNumber: 4, reps: null, weight: null }
+          ]
         },
         {
           id: 'ex-17',
