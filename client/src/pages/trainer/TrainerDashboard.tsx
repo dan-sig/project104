@@ -1,11 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTrainerData } from "@/contexts/TrainerDataContext";
 import { useLocation } from "wouter";
-import { MessageCircle, AlertTriangle, Calendar, TrendingUp, Users } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { MessageCircle, AlertTriangle, TrendingUp, Users } from "lucide-react";
+import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 
 export default function TrainerDashboard() {
   const { clients, getClientFeedback, getUnreadMessages } = useTrainerData();
@@ -95,81 +93,10 @@ export default function TrainerDashboard() {
           </Card>
         </div>
 
-        {/* Client Roster */}
+        {/* Client Roster Table */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Client Roster</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clients.map((client) => {
-              const alertsCount = getClientFeedback(client.id).length;
-              const unreadCount = getUnreadMessages(client.id).length;
-              
-              return (
-                <Card
-                  key={client.id}
-                  className="hover-elevate cursor-pointer"
-                  onClick={() => setLocation(`/trainer/client/${client.id}`)}
-                  data-testid={`card-client-${client.id}`}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-primary text-primary-foreground">
-                            {client.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="font-semibold">{client.name}</h3>
-                          <p className="text-sm text-muted-foreground">{client.email}</p>
-                        </div>
-                      </div>
-                      <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
-                        {client.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Alerts and Messages */}
-                    <div className="flex gap-2">
-                      {alertsCount > 0 && (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          {alertsCount} alerts
-                        </Badge>
-                      )}
-                      {unreadCount > 0 && (
-                        <Badge variant="default" className="gap-1">
-                          <MessageCircle className="h-3 w-3" />
-                          {unreadCount} new
-                        </Badge>
-                      )}
-                    </div>
-
-                  {/* Current Program */}
-                  {client.currentProgram && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Program: </span>
-                      <span className="font-medium">{client.currentProgram}</span>
-                    </div>
-                  )}
-
-                  {/* Last Workout */}
-                  {client.lastWorkout && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>Last workout {formatDistanceToNow(new Date(client.lastWorkout), { addSuffix: true })}</span>
-                    </div>
-                  )}
-
-                  {/* Goals */}
-                  <div className="text-sm text-muted-foreground">
-                    {client.goals}
-                  </div>
-                </CardContent>
-              </Card>
-              );
-            })}
-          </div>
+          <TrainerRosterTable />
         </div>
       </div>
     </div>
