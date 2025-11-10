@@ -45,6 +45,9 @@ export interface MockExercise {
   reps: string;
   weight: string;
   restSeconds: number;
+  tempo?: string;
+  rpe?: number;
+  rir?: number;
   hasFeedback: boolean;
   feedbackType?: 'pain' | 'dislike' | 'too_heavy' | 'too_light';
   notes?: string;
@@ -52,6 +55,7 @@ export interface MockExercise {
 
 export interface MockWorkout {
   id: string;
+  clientId: string;
   name: string;
   scheduledDate: string;
   completed: boolean;
@@ -287,7 +291,7 @@ export const mockMessages: MockMessage[] = [
   }
 ];
 
-export const mockWorkouts: Record<string, MockWorkout[]> = {
+const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
   'client-1': [
     {
       id: 'workout-1',
@@ -514,7 +518,12 @@ export function getClientMessages(clientId: string): MockMessage[] {
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
+// Flatten workouts into a single array with clientId
+export const mockWorkouts: MockWorkout[] = Object.entries(mockWorkoutsByClient).flatMap(
+  ([clientId, workouts]) => workouts.map(workout => ({ ...workout, clientId }))
+);
+
 // Helper function to get workouts for a client
 export function getClientWorkouts(clientId: string): MockWorkout[] {
-  return mockWorkouts[clientId] || [];
+  return mockWorkouts.filter(w => w.clientId === clientId);
 }
