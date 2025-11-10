@@ -24,11 +24,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Search, MessageCircle, AlertTriangle, TrendingUp, Calendar, X } from 'lucide-react';
+import { Search, MessageCircle, AlertTriangle, TrendingUp, Calendar, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTrainerData } from '@/contexts/TrainerDataContext';
 import { format, isWithinInterval } from 'date-fns';
 import type { MockClient } from '@/data/trainerMockData';
 import type { DateRange } from 'react-day-picker';
+
+type SortColumn = 'name' | 'program' | 'status' | 'subscription' | 'daysPerWeek' | 'lastWorkout' | 'completion' | 'messages' | 'alerts' | 'nextWorkout' | 'joined' | 'streak';
+type SortDirection = 'asc' | 'desc' | null;
 
 export function TrainerRosterTable() {
   const [, setLocation] = useLocation();
@@ -47,6 +50,8 @@ export function TrainerRosterTable() {
   const [alertFilter, setAlertFilter] = useState<string>('all');
   const [programFilter, setProgramFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const enrichedClients = useMemo(() => {
     return clients.map(client => ({
@@ -96,6 +101,96 @@ export function TrainerRosterTable() {
       return matchesSearch && matchesStatus && matchesAlerts && matchesProgram && matchesDateRange;
     });
   }, [enrichedClients, searchQuery, statusFilter, alertFilter, programFilter, dateRange]);
+
+  const sortedClients = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filteredClients;
+
+    return [...filteredClients].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'program':
+          aValue = a.currentProgram?.toLowerCase() || '';
+          bValue = b.currentProgram?.toLowerCase() || '';
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case 'subscription':
+          aValue = a.subscriptionType;
+          bValue = b.subscriptionType;
+          break;
+        case 'daysPerWeek':
+          aValue = a.daysPerWeek;
+          bValue = b.daysPerWeek;
+          break;
+        case 'lastWorkout':
+          aValue = a.lastWorkout ? new Date(a.lastWorkout).getTime() : 0;
+          bValue = b.lastWorkout ? new Date(b.lastWorkout).getTime() : 0;
+          break;
+        case 'completion':
+          aValue = a.completionRate;
+          bValue = b.completionRate;
+          break;
+        case 'messages':
+          aValue = a.unreadCount;
+          bValue = b.unreadCount;
+          break;
+        case 'alerts':
+          aValue = a.alertCount;
+          bValue = b.alertCount;
+          break;
+        case 'nextWorkout':
+          aValue = a.nextWorkout ? new Date(a.nextWorkout.scheduledDate).getTime() : 0;
+          bValue = b.nextWorkout ? new Date(b.nextWorkout.scheduledDate).getTime() : 0;
+          break;
+        case 'joined':
+          aValue = new Date(a.joinedDate).getTime();
+          bValue = new Date(b.joinedDate).getTime();
+          break;
+        case 'streak':
+          aValue = a.streak;
+          bValue = b.streak;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredClients, sortColumn, sortDirection]);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-50" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className="h-3 w-3 ml-1" />;
+    }
+    return <ArrowDown className="h-3 w-3 ml-1" />;
+  };
 
   const hasActiveFilters = statusFilter !== 'all' || alertFilter !== 'all' || programFilter !== 'all' || searchQuery !== '' || dateRange !== undefined;
 
@@ -201,29 +296,137 @@ export function TrainerRosterTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Current Program</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Subscription</TableHead>
-              <TableHead>Days/Week</TableHead>
-              <TableHead>Last Workout</TableHead>
-              <TableHead>Completion</TableHead>
-              <TableHead>Messages</TableHead>
-              <TableHead>Alerts</TableHead>
-              <TableHead>Next Workout</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Streak</TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('name')}
+                data-testid="header-name"
+              >
+                <div className="flex items-center">
+                  Name
+                  {getSortIcon('name')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('program')}
+                data-testid="header-program"
+              >
+                <div className="flex items-center">
+                  Current Program
+                  {getSortIcon('program')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('status')}
+                data-testid="header-status"
+              >
+                <div className="flex items-center">
+                  Status
+                  {getSortIcon('status')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('subscription')}
+                data-testid="header-subscription"
+              >
+                <div className="flex items-center">
+                  Subscription
+                  {getSortIcon('subscription')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('daysPerWeek')}
+                data-testid="header-days"
+              >
+                <div className="flex items-center">
+                  Days/Week
+                  {getSortIcon('daysPerWeek')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('lastWorkout')}
+                data-testid="header-last-workout"
+              >
+                <div className="flex items-center">
+                  Last Workout
+                  {getSortIcon('lastWorkout')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('completion')}
+                data-testid="header-completion"
+              >
+                <div className="flex items-center">
+                  Completion
+                  {getSortIcon('completion')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('messages')}
+                data-testid="header-messages"
+              >
+                <div className="flex items-center">
+                  Messages
+                  {getSortIcon('messages')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('alerts')}
+                data-testid="header-alerts"
+              >
+                <div className="flex items-center">
+                  Alerts
+                  {getSortIcon('alerts')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('nextWorkout')}
+                data-testid="header-next-workout"
+              >
+                <div className="flex items-center">
+                  Next Workout
+                  {getSortIcon('nextWorkout')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('joined')}
+                data-testid="header-joined"
+              >
+                <div className="flex items-center">
+                  Joined
+                  {getSortIcon('joined')}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer select-none group"
+                onClick={() => handleSort('streak')}
+                data-testid="header-streak"
+              >
+                <div className="flex items-center">
+                  Streak
+                  {getSortIcon('streak')}
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.length === 0 ? (
+            {sortedClients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                   {searchQuery ? 'No clients found matching your search.' : 'No clients yet.'}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredClients.map((client) => (
+              sortedClients.map((client) => (
                 <TableRow
                   key={client.id}
                   className="cursor-pointer hover-elevate"
@@ -361,7 +564,7 @@ export function TrainerRosterTable() {
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <div>
-          Showing {filteredClients.length} of {clients.length} clients
+          Showing {sortedClients.length} of {clients.length} clients
         </div>
       </div>
     </div>
