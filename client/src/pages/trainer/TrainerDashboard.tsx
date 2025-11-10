@@ -43,9 +43,15 @@ export default function TrainerDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Compact Two-Card Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue Stats */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Revenue Overview</h2>
           <RevenueOverview />
+        </div>
+
+        {/* Client Stats */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Client Statistics</h2>
           <ClientStats />
         </div>
 
@@ -53,11 +59,35 @@ export default function TrainerDashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList data-testid="tabs-trainer-dashboard">
             <TabsTrigger value="clients" data-testid="tab-clients">Client Roster</TabsTrigger>
+            <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
             <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
             <TrainerRosterTable />
+          </TabsContent>
+
+          <TabsContent value="programs" className="mt-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-semibold">Training Programs</h3>
+                <p className="text-sm text-muted-foreground">Create and manage your custom programs</p>
+              </div>
+              <Button
+                onClick={() => setLocation('/trainer/programs/new')}
+                data-testid="button-create-program"
+              >
+                Create New Program
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setLocation('/trainer/programs')}
+              className="w-full"
+              data-testid="button-view-all-programs"
+            >
+              View All Programs
+            </Button>
           </TabsContent>
 
           <TabsContent value="exercises" className="mt-6">
