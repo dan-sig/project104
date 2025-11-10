@@ -204,6 +204,7 @@ export function TrainerRosterTable() {
               <TableHead>Name</TableHead>
               <TableHead>Current Program</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Subscription</TableHead>
               <TableHead>Days/Week</TableHead>
               <TableHead>Last Workout</TableHead>
               <TableHead>Completion</TableHead>
@@ -217,7 +218,7 @@ export function TrainerRosterTable() {
           <TableBody>
             {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                   {searchQuery ? 'No clients found matching your search.' : 'No clients yet.'}
                 </TableCell>
               </TableRow>
@@ -255,6 +256,15 @@ export function TrainerRosterTable() {
                       data-testid={`badge-status-${client.id}`}
                     >
                       {client.status}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge
+                      variant={client.subscriptionType === 'annual' ? 'default' : 'outline'}
+                      data-testid={`badge-subscription-${client.id}`}
+                    >
+                      {client.subscriptionType === 'monthly' ? 'Monthly' : 'Annual'}
                     </Badge>
                   </TableCell>
 
