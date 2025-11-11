@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 import { RevenueOverview } from "@/components/trainer/RevenueOverview";
@@ -11,6 +12,7 @@ import { InviteManager } from "@/components/trainer/InviteManager";
 import { TrainerInvitations } from "@/components/trainer/TrainerInvitations";
 import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
+import { usePendingInvitesCount } from "@/hooks/usePendingInvitesCount";
 import type { User, TrainerProfile } from "@shared/schema";
 import { AlertTriangle, MessageCircle, Users, Crown } from "lucide-react";
 
@@ -29,6 +31,9 @@ export default function TrainerDashboard() {
     queryKey: ["/api/trainer/profile"],
     retry: false,
   });
+
+  // Fetch pending invites count for Client Invitations tab badge
+  const { pendingCount: pendingInvitesCount, hasPending: hasPendingInvites } = usePendingInvitesCount();
 
   const clientCount = stats.activeClients || 0;
   const isPremium = trainerProfile?.subscriptionStatus === "premium";
@@ -164,7 +169,18 @@ export default function TrainerDashboard() {
             <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
             <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
             <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
-            <TabsTrigger value="client-invitations" data-testid="tab-client-invitations">Client Invitations</TabsTrigger>
+            <TabsTrigger value="client-invitations" data-testid="tab-client-invitations" className="relative">
+              Client Invitations
+              {hasPendingInvites && (
+                <Badge 
+                  variant="default" 
+                  className="ml-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  data-testid="badge-pending-invites"
+                >
+                  {pendingInvitesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="invites" data-testid="tab-invites">Invite Links</TabsTrigger>
           </TabsList>
 

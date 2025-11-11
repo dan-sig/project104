@@ -44,6 +44,7 @@ import { WeeklyScheduleView } from "@/components/WeeklyScheduleView";
 import { RescheduleDialog } from "@/components/RescheduleDialog";
 import AITrainingAssistant from "@/components/AITrainingAssistant";
 import { CYCLE_INFO, getWeekTheme } from "@shared/cycleConstants";
+import { usePendingInvitesCount } from "@/hooks/usePendingInvitesCount";
 
 export default function Home() {
   const { toast } = useToast();
@@ -62,6 +63,9 @@ export default function Home() {
   
   // Track previous missed workout count to prevent repeated rescheduling
   const previousMissedCountRef = useRef<number>(0);
+  
+  // Fetch pending invites count for Settings badge
+  const { pendingCount: pendingInvitesCount, hasPending: hasPendingInvites } = usePendingInvitesCount();
 
   // STEP 1: Fetch all home page data in single request for performance
   // Gets: user profile, active program, workout sessions, fitness assessments
@@ -566,8 +570,17 @@ export default function Home() {
             </div>
           </div>
           <Link href="/settings">
-            <Button variant="ghost" size="icon" data-testid="button-settings">
+            <Button variant="ghost" size="icon" className="relative" data-testid="button-settings">
               <Settings className="h-5 w-5" />
+              {hasPendingInvites && (
+                <Badge 
+                  variant="default" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  data-testid="badge-pending-invites"
+                >
+                  {pendingInvitesCount}
+                </Badge>
+              )}
             </Button>
           </Link>
         </div>
