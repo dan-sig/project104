@@ -24,7 +24,8 @@ import {
   Loader2,
   Check,
   X,
-  Briefcase
+  Briefcase,
+  Shield
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -56,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { formatLocalDate, getTodayLocal } from "@shared/dateUtils";
 import { calculateAge } from "@shared/utils";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -87,6 +89,7 @@ export default function Settings() {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [selectedUnitPreference, setSelectedUnitPreference] = useState<string>("imperial");
+  const [isDiscoverable, setIsDiscoverable] = useState(false);
   
   // Track original values to detect program-affecting changes
   const [originalEquipment, setOriginalEquipment] = useState<string[]>([]);
@@ -147,6 +150,8 @@ export default function Settings() {
         const displayWeight = Math.round(user.weight * (isMetric ? 1 : 2.20462));
         setWeight(displayWeight.toString());
       }
+      
+      setIsDiscoverable(user.isDiscoverable || false);
     }
   }, [user, unitPreference]);
 
@@ -538,6 +543,33 @@ export default function Settings() {
     }
   };
 
+  const updateDiscoverabilityMutation = useMutation({
+    mutationFn: async (discoverable: boolean) => {
+      return await apiRequest("PUT", "/api/user/profile", { isDiscoverable: discoverable });
+    },
+    onSuccess: (_, discoverable) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Privacy settings updated",
+        description: discoverable 
+          ? "You are now discoverable by trainers" 
+          : "You are now hidden from trainer search",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update privacy settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggleDiscoverability = (checked: boolean) => {
+    setIsDiscoverable(checked);
+    updateDiscoverabilityMutation.mutate(checked);
+  };
+
   const isPaidUser = user?.subscriptionTier === "paid";
   const weightUnit = unitPreference === 'imperial' ? 'lbs' : 'kg';
   const heightUnit = unitPreference === 'imperial' ? 'in' : 'cm';
@@ -869,6 +901,39 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <ClientInvitations />
+            </CardContent>
+          </Card>
+        )}
+
+        {user?.role !== "trainer" && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                <CardTitle>Privacy Settings</CardTitle>
+              </div>
+              <CardDescription>Control who can find you on Morphit</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex-1 mr-4">
+                  <p className="font-medium">Discoverable by Trainers</p>
+                  <p className="text-sm text-muted-foreground">
+                    Allow trainers to find and invite you by searching your email or name
+                  </p>
+                </div>
+                <Switch
+                  checked={isDiscoverable}
+                  onCheckedChange={handleToggleDiscoverability}
+                  disabled={updateDiscoverabilityMutation.isPending}
+                  data-testid="switch-discoverable"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                When enabled, trainers can search for you and send connection invitations. 
+                You can still connect with trainers manually by entering their username, 
+                even when this setting is disabled.
+              </p>
             </CardContent>
           </Card>
         )}
