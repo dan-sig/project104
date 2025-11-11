@@ -4059,9 +4059,13 @@ Provide a helpful, motivating response that addresses their question using this 
           received,
         };
       } else {
-        // Clients only see received invites
-        const received = await storage.getClientInvites(userId);
-        invites = { received };
+        // Clients see both sent and received invites
+        const allInvites = await storage.getClientInvites(userId);
+        // Split into sent (client initiated) and received (trainer initiated)
+        const sent = allInvites.filter(invite => invite.initiatorRole === "client");
+        const received = allInvites.filter(invite => invite.initiatorRole === "trainer");
+        
+        invites = { sent, received };
       }
       
       res.json(invites);

@@ -63,6 +63,7 @@ import { toggleEquipment as toggleEquipmentUtil } from "@/lib/equipmentUtils";
 import { DayPicker } from "@/components/DayPicker";
 import type { TrainerProfile } from "@shared/schema";
 import { usernameSchema, checkUsernameAvailability, type UsernameAvailability } from "@/lib/usernameValidation";
+import { ClientInvitations } from "@/components/ClientInvitations";
 
 export default function Settings() {
   const [, setLocation] = useLocation();
@@ -856,6 +857,18 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {user?.role !== "trainer" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Trainer Invitations</CardTitle>
+              <CardDescription>Review and respond to trainer connection requests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClientInvitations />
             </CardContent>
           </Card>
         )}
