@@ -3653,14 +3653,17 @@ Provide a helpful, motivating response that addresses their question using this 
     try {
       const trainerId = req.user.claims.sub;
       
-      // Development mode: Return mock data if flag is enabled
-      if (process.env.ENABLE_FAKE_ROSTER === "true") {
-        const { mockTrainerRoster } = await import("@shared/mocks/trainerRoster");
-        console.log("[DEV-MODE] Returning mock trainer roster data");
-        return res.json(mockTrainerRoster);
+      // Fetch real client data
+      const clients = await storage.getTrainerClientsWithPrograms(trainerId);
+      
+      // Test mode: Merge with mock data if flag is enabled
+      if (process.env.ENABLE_TEST_DATA === "true") {
+        const { generateMockTrainerRoster } = await import("@shared/mocks/trainerTestData");
+        const mockRoster = generateMockTrainerRoster();
+        console.log("[TEST-MODE] Merging mock trainer roster data with real data");
+        return res.json([...mockRoster, ...clients]);
       }
       
-      const clients = await storage.getTrainerClientsWithPrograms(trainerId);
       res.json(clients);
     } catch (error) {
       console.error("Error fetching trainer clients:", error);
@@ -3672,7 +3675,29 @@ Provide a helpful, motivating response that addresses their question using this 
   app.get("/api/trainer/sales", isAuthenticated, async (req: any, res: Response) => {
     try {
       const trainerId = req.user.claims.sub;
+      
+      // Fetch real sales data
       const salesMetrics = await storage.getTrainerSalesMetrics(trainerId);
+      
+      // Test mode: Merge with mock data if flag is enabled
+      if (process.env.ENABLE_TEST_DATA === "true") {
+        const { generateMockTrainerSalesMetrics } = await import("@shared/mocks/trainerTestData");
+        const mockMetrics = generateMockTrainerSalesMetrics();
+        console.log("[TEST-MODE] Merging mock sales metrics with real data");
+        
+        // Merge metrics
+        const mergedMetrics = {
+          totalRevenue: salesMetrics.totalRevenue + mockMetrics.totalRevenue,
+          monthlyRevenue: salesMetrics.monthlyRevenue + mockMetrics.monthlyRevenue,
+          annualRevenue: salesMetrics.annualRevenue + mockMetrics.annualRevenue,
+          totalPurchases: salesMetrics.totalPurchases + mockMetrics.totalPurchases,
+          activePlans: salesMetrics.activePlans + mockMetrics.activePlans,
+          purchases: [...mockMetrics.purchases, ...salesMetrics.purchases],
+        };
+        
+        return res.json(mergedMetrics);
+      }
+      
       res.json(salesMetrics);
     } catch (error) {
       console.error("Error fetching trainer sales:", error);
