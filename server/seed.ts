@@ -2,19 +2,103 @@ import { storage } from "./storage";
 
 const TRAINER_ID = 'test-trainer-123';
 
+// Real user IDs for clients and additional trainers
+const CLIENT_IDS = {
+  SARAH: 'user-sarah-001',
+  MIKE: 'user-mike-002',
+  JESSICA: 'user-jessica-003',
+  DAVID: 'user-david-004',
+};
+
+const TRAINER_IDS = {
+  ALEX: TRAINER_ID, // Our test trainer
+  EMMA: 'trainer-emma-001',
+  JAMES: 'trainer-james-002',
+};
+
 export async function seedDatabase() {
   console.log('[SEED] Starting database seed...');
 
   try {
-    // Task 2: Create realistic trainer profile
-    console.log('[SEED] Creating trainer profile...');
+    // Create all users first (clients and trainers)
+    console.log('[SEED] Creating users...');
     
-    // Check if profile already exists
-    const existingProfile = await storage.getTrainerProfile(TRAINER_ID);
+    const users = [
+      // Test trainer (for development login)
+      {
+        id: TRAINER_IDS.ALEX,
+        email: 'alex.trainer@morphit.dev',
+        firstName: 'Alex',
+        lastName: 'Martinez',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+      // Client users
+      {
+        id: CLIENT_IDS.SARAH,
+        email: 'sarah.johnson@example.com',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+      {
+        id: CLIENT_IDS.MIKE,
+        email: 'mike.chen@example.com',
+        firstName: 'Mike',
+        lastName: 'Chen',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+      {
+        id: CLIENT_IDS.JESSICA,
+        email: 'jessica.rodriguez@example.com',
+        firstName: 'Jessica',
+        lastName: 'Rodriguez',
+        profileImageUrl: null,
+        isDiscoverable: false, // This user opted out of discoverability
+      },
+      {
+        id: CLIENT_IDS.DAVID,
+        email: 'david.kim@example.com',
+        firstName: 'David',
+        lastName: 'Kim',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+      // Additional trainer users
+      {
+        id: TRAINER_IDS.EMMA,
+        email: 'emma.wilson@morphit.dev',
+        firstName: 'Emma',
+        lastName: 'Wilson',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+      {
+        id: TRAINER_IDS.JAMES,
+        email: 'james.taylor@morphit.dev',
+        firstName: 'James',
+        lastName: 'Taylor',
+        profileImageUrl: null,
+        isDiscoverable: true,
+      },
+    ];
+
+    for (const user of users) {
+      await storage.upsertUser(user);
+    }
+    console.log(`[SEED] Created ${users.length} users`);
+
+    // Create trainer profiles
+    console.log('[SEED] Creating trainer profiles...');
+    
+    // Main test trainer - Alex Martinez
+    const existingProfile = await storage.getTrainerProfile(TRAINER_IDS.ALEX);
     
     if (!existingProfile) {
       await storage.createTrainerProfile({
-        userId: TRAINER_ID,
+        userId: TRAINER_IDS.ALEX,
         username: 'alexmartinez',
         bio: "Certified strength coach with 10+ years experience helping clients build sustainable fitness habits. Specializing in functional movement patterns and longevity-focused training.",
         yearsExperience: 10,
@@ -28,10 +112,45 @@ export async function seedDatabase() {
         onboardingStatus: 'completed',
       });
     } else if (!existingProfile.username) {
-      // Update existing profile to add username if it doesn't have one
-      await storage.updateTrainerProfile(TRAINER_ID, {
+      await storage.updateTrainerProfile(TRAINER_IDS.ALEX, {
         username: 'alexmartinez',
         subscriptionStatus: 'premium',
+      });
+    }
+
+    // Emma Wilson - Yoga & Mobility specialist
+    const existingEmma = await storage.getTrainerProfile(TRAINER_IDS.EMMA);
+    if (!existingEmma) {
+      await storage.createTrainerProfile({
+        userId: TRAINER_IDS.EMMA,
+        username: 'emmawilson',
+        bio: "Yoga instructor and mobility specialist. I help busy professionals reduce pain and improve movement quality through targeted flexibility work.",
+        yearsExperience: 7,
+        certifications: ['RYT-500', 'FRC Mobility Specialist'],
+        specialties: ['Yoga', 'Mobility', 'Flexibility', 'Pain Management'],
+        socialLinks: {
+          instagram: '@emma_moves',
+        },
+        subscriptionStatus: 'free',
+        onboardingStatus: 'completed',
+      });
+    }
+
+    // James Taylor - Endurance & Running coach
+    const existingJames = await storage.getTrainerProfile(TRAINER_IDS.JAMES);
+    if (!existingJames) {
+      await storage.createTrainerProfile({
+        userId: TRAINER_IDS.JAMES,
+        username: 'jamestaylor',
+        bio: "Marathon runner and endurance coach. Helping runners of all levels achieve their goals through structured training and injury prevention.",
+        yearsExperience: 5,
+        certifications: ['USATF Level 1', 'CPR/AED'],
+        specialties: ['Running', 'Endurance Training', 'Marathon Prep', 'Injury Prevention'],
+        socialLinks: {
+          website: 'https://runwithjames.com',
+        },
+        subscriptionStatus: 'free',
+        onboardingStatus: 'completed',
       });
     }
 
@@ -543,109 +662,132 @@ export async function seedDatabase() {
     });
     }
 
-    // Task 5: Populate sales data - create sample purchases and clients
-    console.log('[SEED] Creating sample purchases and clients...');
+    // Create trainer-client connections and purchases
+    console.log('[SEED] Creating trainer-client connections and purchases...');
 
-    // Check if purchases already exist
-    const existingClients = await storage.getTrainerClientsWithPrograms(TRAINER_ID);
+    const existingClients = await storage.getTrainerClientsWithPrograms(TRAINER_IDS.ALEX);
     if (existingClients.length > 0) {
-      console.log(`[SEED] Purchases and clients already exist (${existingClients.length} found), skipping creation`);
+      console.log(`[SEED] Trainer-client connections already exist (${existingClients.length} found), skipping creation`);
     } else {
-      const clients = [
-        { id: 'client-001', email: 'sarah.j@example.com', firstName: 'Sarah', lastName: 'Johnson' },
-        { id: 'client-002', email: 'mike.chen@example.com', firstName: 'Mike', lastName: 'Chen' },
-        { id: 'client-003', email: 'jessica.rodriguez@example.com', firstName: 'Jessica', lastName: 'Rodriguez' },
-      ];
+      // Sarah bought Upper Body Power Builder from Alex
+      const purchase1Price = 49.99;
+      const purchase1 = await storage.createProgramPurchase({
+        trainerProgramId: program1.id,
+        trainerId: TRAINER_IDS.ALEX,
+        buyerId: CLIENT_IDS.SARAH,
+        purchasePrice: purchase1Price,
+        platformFee: purchase1Price * 0.20,
+        trainerEarnings: purchase1Price * 0.80,
+        pricingType: 'one_time',
+        status: 'completed',
+      });
 
-      for (const client of clients) {
-        await storage.upsertUser(client);
-      }
+      await storage.createTrainerClient({
+        trainerId: TRAINER_IDS.ALEX,
+        clientId: CLIENT_IDS.SARAH,
+        sourcePurchaseId: purchase1.id,
+      });
 
-    // Create purchases with proper fee calculations and client relationships
-    const purchase1Price = 49.99;
-    const purchase1 = await storage.createProgramPurchase({
-      trainerProgramId: program1.id,
-      trainerId: TRAINER_ID,
-      buyerId: clients[0].id,
-      purchasePrice: purchase1Price,
-      platformFee: purchase1Price * 0.20,
-      trainerEarnings: purchase1Price * 0.80,
-      pricingType: 'one_time',
-      status: 'completed',
-    });
+      // Mike bought Functional Movement Mastery from Alex
+      const purchase2Price = 29.99;
+      const purchase2 = await storage.createProgramPurchase({
+        trainerProgramId: program2.id,
+        trainerId: TRAINER_IDS.ALEX,
+        buyerId: CLIENT_IDS.MIKE,
+        purchasePrice: purchase2Price,
+        platformFee: purchase2Price * 0.20,
+        trainerEarnings: purchase2Price * 0.80,
+        pricingType: 'subscription',
+        status: 'completed',
+      });
 
-    await storage.createTrainerClient({
-      trainerId: TRAINER_ID,
-      clientId: clients[0].id,
-      sourcePurchaseId: purchase1.id,
-    });
+      await storage.createTrainerClient({
+        trainerId: TRAINER_IDS.ALEX,
+        clientId: CLIENT_IDS.MIKE,
+        sourcePurchaseId: purchase2.id,
+      });
 
-    const purchase2Price = 29.99;
-    const purchase2 = await storage.createProgramPurchase({
-      trainerProgramId: program2.id,
-      trainerId: TRAINER_ID,
-      buyerId: clients[1].id,
-      purchasePrice: purchase2Price,
-      platformFee: purchase2Price * 0.20,
-      trainerEarnings: purchase2Price * 0.80,
-      pricingType: 'subscription',
-      status: 'completed',
-    });
+      // Jessica also bought Functional Movement Mastery from Alex
+      const purchase3 = await storage.createProgramPurchase({
+        trainerProgramId: program2.id,
+        trainerId: TRAINER_IDS.ALEX,
+        buyerId: CLIENT_IDS.JESSICA,
+        purchasePrice: purchase2Price,
+        platformFee: purchase2Price * 0.20,
+        trainerEarnings: purchase2Price * 0.80,
+        pricingType: 'subscription',
+        status: 'completed',
+      });
 
-    await storage.createTrainerClient({
-      trainerId: TRAINER_ID,
-      clientId: clients[1].id,
-      sourcePurchaseId: purchase2.id,
-    });
+      await storage.createTrainerClient({
+        trainerId: TRAINER_IDS.ALEX,
+        clientId: CLIENT_IDS.JESSICA,
+        sourcePurchaseId: purchase3.id,
+      });
 
-    const purchase3 = await storage.createProgramPurchase({
-      trainerProgramId: program2.id,
-      trainerId: TRAINER_ID,
-      buyerId: clients[2].id,
-      purchasePrice: purchase2Price,
-      platformFee: purchase2Price * 0.20,
-      trainerEarnings: purchase2Price * 0.80,
-      pricingType: 'subscription',
-      status: 'completed',
-    });
-
-    await storage.createTrainerClient({
-      trainerId: TRAINER_ID,
-      clientId: clients[2].id,
-      sourcePurchaseId: purchase3.id,
-    });
-
-    const purchase3Price = 19.99;
-    const purchase4 = await storage.createProgramPurchase({
-      trainerProgramId: program3.id,
-      trainerId: TRAINER_ID,
-      buyerId: clients[0].id,
-      purchasePrice: purchase3Price,
-      platformFee: purchase3Price * 0.20,
-      trainerEarnings: purchase3Price * 0.80,
-      pricingType: 'one_time',
-      status: 'completed',
-    });
-
-      // Client 0 (Sarah) already added from purchase1, so skip duplicate client record
+      console.log('[SEED] Created 3 trainer-client connections with program purchases');
     }
 
-    // Task 6: Add active invite links
+    // Create bidirectional trainer-client invitations
+    console.log('[SEED] Creating sample invitations...');
+    
+    const existingInvitations = await storage.getInvites(TRAINER_IDS.ALEX);
+    if (existingInvitations.sent.length > 0 || existingInvitations.received.length > 0) {
+      console.log(`[SEED] Invitations already exist, skipping creation`);
+    } else {
+      // Trainer-initiated invites (Alex inviting clients)
+      // Alex → David (pending - waiting for David to accept)
+      await storage.createInvite({
+        trainerId: TRAINER_IDS.ALEX,
+        clientId: CLIENT_IDS.DAVID,
+        initiatorRole: 'trainer',
+        status: 'pending',
+      });
+
+      // Client-initiated invites (clients inviting trainers)
+      // Sarah → Emma (pending - Sarah wants to work with Emma too)
+      await storage.createInvite({
+        trainerId: TRAINER_IDS.EMMA,
+        clientId: CLIENT_IDS.SARAH,
+        initiatorRole: 'client',
+        status: 'pending',
+      });
+
+      // Mike → James (pending - Mike interested in running coaching)
+      await storage.createInvite({
+        trainerId: TRAINER_IDS.JAMES,
+        clientId: CLIENT_IDS.MIKE,
+        initiatorRole: 'client',
+        status: 'pending',
+      });
+
+      // David → Alex (pending - showing both directions)
+      await storage.createInvite({
+        trainerId: TRAINER_IDS.ALEX,
+        clientId: CLIENT_IDS.DAVID,
+        initiatorRole: 'client',
+        status: 'pending',
+      });
+
+      console.log('[SEED] Created 4 pending invitations (2 trainer-initiated, 2 client-initiated)');
+    }
+
+    // Add active invite links for Alex
     console.log('[SEED] Creating invite links...');
     
-    const existingInvites = await storage.getTrainerInviteLinks(TRAINER_ID);
-    if (existingInvites.length > 0) {
-      console.log(`[SEED] Invite links already exist (${existingInvites.length} found), skipping creation`);
+    const existingInviteLinks = await storage.getTrainerInviteLinks(TRAINER_IDS.ALEX);
+    if (existingInviteLinks.length > 0) {
+      console.log(`[SEED] Invite links already exist (${existingInviteLinks.length} found), skipping creation`);
     } else {
       await storage.createTrainerInviteLink({
-        trainerId: TRAINER_ID,
+        trainerId: TRAINER_IDS.ALEX,
         code: 'WELCOME2024',
         maxUses: null, // Unlimited
         expiresAt: null, // Never expires
       });
 
       await storage.createTrainerInviteLink({
-        trainerId: TRAINER_ID,
+        trainerId: TRAINER_IDS.ALEX,
         code: 'LIMITED10',
         maxUses: 10,
         expiresAt: null,
@@ -655,7 +797,7 @@ export async function seedDatabase() {
       oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
       
       await storage.createTrainerInviteLink({
-        trainerId: TRAINER_ID,
+        trainerId: TRAINER_IDS.ALEX,
         code: 'FLASH7DAY',
         maxUses: 50,
         expiresAt: oneWeekFromNow,
@@ -663,11 +805,32 @@ export async function seedDatabase() {
     }
 
     console.log('[SEED] Database seed completed successfully!');
-    console.log('[SEED] Test trainer credentials:');
-    console.log('[SEED]   User ID: test-trainer-123');
+    console.log('[SEED] =====================================');
+    console.log('[SEED] Test Users Created:');
+    console.log('[SEED]');
+    console.log('[SEED] TRAINER (for dev login):');
+    console.log('[SEED]   Name: Alex Martinez (@alexmartinez)');
     console.log('[SEED]   Email: alex.trainer@morphit.dev');
-    console.log('[SEED]   Name: Alex Martinez');
-    console.log('[SEED] Navigate to /trainer to see the dashboard');
+    console.log('[SEED]   ID: test-trainer-123');
+    console.log('[SEED]   Has: 3 active clients, 10 custom exercises, 3 programs');
+    console.log('[SEED]');
+    console.log('[SEED] CLIENTS:');
+    console.log('[SEED]   • Sarah Johnson (sarah.johnson@example.com) - Alex\'s client');
+    console.log('[SEED]   • Mike Chen (mike.chen@example.com) - Alex\'s client');
+    console.log('[SEED]   • Jessica Rodriguez (jessica.rodriguez@example.com) - Alex\'s client, not discoverable');
+    console.log('[SEED]   • David Kim (david.kim@example.com) - No trainer yet');
+    console.log('[SEED]');
+    console.log('[SEED] OTHER TRAINERS:');
+    console.log('[SEED]   • Emma Wilson (@emmawilson) - Yoga & Mobility');
+    console.log('[SEED]   • James Taylor (@jamestaylor) - Running Coach');
+    console.log('[SEED]');
+    console.log('[SEED] PENDING INVITATIONS:');
+    console.log('[SEED]   • Alex → David (trainer-initiated)');
+    console.log('[SEED]   • David → Alex (client-initiated)');
+    console.log('[SEED]   • Sarah → Emma (client-initiated)');
+    console.log('[SEED]   • Mike → James (client-initiated)');
+    console.log('[SEED] =====================================');
+    console.log('[SEED] Navigate to /trainer to see Alex\'s trainer dashboard');
 
   } catch (error) {
     console.error('[SEED] Error seeding database:', error);
