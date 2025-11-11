@@ -20,6 +20,9 @@ import {
   Clock,
   TrendingUp,
   ShoppingCart,
+  Tag,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -67,6 +70,8 @@ export default function ProgramBuyPage() {
   const { toast } = useToast();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [buyerEmail, setBuyerEmail] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [codeValidationStatus, setCodeValidationStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
 
   // Fetch public program
   const { data: program, isLoading, error } = useQuery<ProgramBuyPageData>({
@@ -74,12 +79,43 @@ export default function ProgramBuyPage() {
     enabled: !!slug,
   });
 
+  // Validate discount code
+  const validateCode = async (code: string) => {
+    if (!code.trim()) {
+      setCodeValidationStatus('idle');
+      return;
+    }
+    
+    setCodeValidationStatus('checking');
+    try {
+      const response = await apiRequest(`/api/discount-codes/${code}`, "GET");
+      if (response.valid) {
+        setCodeValidationStatus('valid');
+      } else {
+        setCodeValidationStatus('invalid');
+        toast({
+          title: "Invalid Code",
+          description: response.message || "This discount code is not valid",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setCodeValidationStatus('invalid');
+      toast({
+        title: "Invalid Code",
+        description: "Unable to validate discount code",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Purchase mutation
   const purchaseMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("/api/programs/purchase", "POST", {
         slug,
         buyerEmail,
+        discountCode: codeValidationStatus === 'valid' && discountCode ? discountCode : undefined,
       });
     },
     onSuccess: () => {
@@ -89,6 +125,8 @@ export default function ProgramBuyPage() {
       });
       setPurchaseDialogOpen(false);
       setBuyerEmail("");
+      setDiscountCode("");
+      setCodeValidationStatus('idle');
       // Redirect to home after 2 seconds
       setTimeout(() => {
         setLocation("/home");
@@ -359,18 +397,89 @@ export default function ProgramBuyPage() {
                 data-testid="input-buyer-email"
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="discount-code" className="flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Discount Code (Optional)
+              </Label>
+              <div className="relative">
+                <Input
+                  id="discount-code"
+                  type="text"
+                  placeholder="Enter discount code"
+                  value={discountCode}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    setDiscountCode(value);
+                    if (!value) {
+                      setCodeValidationStatus('idle');
+                    }
+                  }}
+                  onBlur={() => {
+                    if (discountCode) {
+                      validateCode(discountCode);
+                    }
+                  }}
+                  data-testid="input-discount-code"
+                  className={
+                    codeValidationStatus === 'valid' 
+                      ? 'border-green-500 dark:border-green-600' 
+                      : codeValidationStatus === 'invalid'
+                      ? 'border-destructive'
+                      : ''
+                  }
+                />
+                {codeValidationStatus === 'checking' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
+                  </div>
+                )}
+                {codeValidationStatus === 'valid' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" data-testid="icon-code-valid" />
+                  </div>
+                )}
+                {codeValidationStatus === 'invalid' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <AlertCircle className="h-4 w-4 text-destructive" data-testid="icon-code-invalid" />
+                  </div>
+                )}
+              </div>
+              {codeValidationStatus === 'valid' && (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  25% discount applied
+                </p>
+              )}
+            </div>
+            
             <div className="bg-muted p-4 rounded-md space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Program Price:</span>
-                <span className="font-semibold">${program?.price}</span>
+                <span className={codeValidationStatus === 'valid' ? 'line-through text-muted-foreground' : 'font-semibold'}>
+                  ${program?.price}
+                </span>
               </div>
+              {codeValidationStatus === 'valid' && (
+                <>
+                  <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                    <span>Discount (25%):</span>
+                    <span data-testid="text-discount-amount">-${((program?.price || 0) * 0.25).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold border-t border-border pt-2">
+                    <span>Discounted Price:</span>
+                    <span data-testid="text-final-price">${((program?.price || 0) * 0.75).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Platform Fee (20%):</span>
-                <span>${((program?.price || 0) * 0.2).toFixed(2)}</span>
+                <span>${(((program?.price || 0) * (codeValidationStatus === 'valid' ? 0.75 : 1)) * 0.2).toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Trainer Earnings (80%):</span>
-                <span>${((program?.price || 0) * 0.8).toFixed(2)}</span>
+                <span>${(((program?.price || 0) * (codeValidationStatus === 'valid' ? 0.75 : 1)) * 0.8).toFixed(2)}</span>
               </div>
             </div>
           </div>

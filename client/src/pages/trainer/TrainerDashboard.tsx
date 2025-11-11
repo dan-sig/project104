@@ -8,7 +8,7 @@ import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 import { RevenueOverview } from "@/components/trainer/RevenueOverview";
 import { ClientStats } from "@/components/trainer/ClientStats";
 import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
-import { InviteManager } from "@/components/trainer/InviteManager";
+import { DiscountCodeManager } from "@/components/trainer/DiscountCodeManager";
 import { TrainerInvitations } from "@/components/trainer/TrainerInvitations";
 import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
@@ -181,7 +181,7 @@ export default function TrainerDashboard() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="invites" data-testid="tab-invites">Invite Links</TabsTrigger>
+            <TabsTrigger value="discount-codes" data-testid="tab-discount-codes">Discount Codes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
@@ -247,14 +247,14 @@ export default function TrainerDashboard() {
             <TrainerInvitations />
           </TabsContent>
 
-          <TabsContent value="invites" className="mt-6">
+          <TabsContent value="discount-codes" className="mt-6">
             <div className="mb-4 p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground">
-                <strong>Invite Links</strong> - Create shareable links for your training programs. 
-                Use these for marketing and program sales.
+                <strong>Discount Codes</strong> - Premium trainers can generate monthly 25% discount codes to attract new clients. 
+                Share these codes for marketing and program sales.
               </p>
             </div>
-            <InviteManager />
+            <DiscountCodeManager />
           </TabsContent>
         </Tabs>
       </div>
