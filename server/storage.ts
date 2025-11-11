@@ -51,8 +51,8 @@ import {
   type TrainerSalesMetrics,
   type TrainerProfile,
   type InsertTrainerProfile,
-  type TrainerInviteLink,
-  type InsertTrainerInviteLink,
+  type TrainerDiscountCode,
+  type InsertTrainerDiscountCode,
   type TrainerClientInvite,
   type InsertTrainerClientInvite,
 } from "@shared/schema";
@@ -156,10 +156,12 @@ export interface IStorage {
   getTrainerClientConnection(trainerId: string, clientId: string): Promise<TrainerClient | undefined>;
   getClientTrainerConnection(clientId: string): Promise<TrainerClient | undefined>;
   
-  createTrainerInviteLink(invite: InsertTrainerInviteLink): Promise<TrainerInviteLink>;
-  getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]>;
-  getTrainerInviteLinkByCode(code: string): Promise<TrainerInviteLink | undefined>;
-  trackInviteLinkUse(code: string): Promise<void>;
+  createTrainerDiscountCode(code: InsertTrainerDiscountCode): Promise<TrainerDiscountCode>;
+  getTrainerDiscountCodes(trainerId: string): Promise<TrainerDiscountCode[]>;
+  getActiveDiscountCodeForTrainer(trainerId: string): Promise<TrainerDiscountCode | undefined>;
+  getDiscountCodeByCode(code: string): Promise<TrainerDiscountCode | undefined>;
+  redeemDiscountCode(codeId: string, userId: string, purchaseId: string): Promise<void>;
+  canTrainerGenerateCode(trainerId: string): Promise<boolean>;
   
   createTrainerClientInvite(invite: InsertTrainerClientInvite): Promise<TrainerClientInvite>;
   getTrainerInvites(trainerId: string): Promise<TrainerClientInvite[]>;
@@ -187,7 +189,7 @@ import {
   programPurchases,
   trainerClients,
   trainerProfiles,
-  trainerInviteLinks,
+  trainerDiscountCodes,
   trainerClientInvites,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
@@ -1050,61 +1052,91 @@ export class DbStorage implements IStorage {
   }
 
   // ==========================================
-  // TRAINER INVITE LINK OPERATIONS
+  // TRAINER DISCOUNT CODE OPERATIONS
   // ==========================================
-  async createTrainerInviteLink(invite: InsertTrainerInviteLink): Promise<TrainerInviteLink> {
-    const result = await db.insert(trainerInviteLinks).values(invite).returning();
+  async createTrainerDiscountCode(codeData: InsertTrainerDiscountCode): Promise<TrainerDiscountCode> {
+    const result = await db.insert(trainerDiscountCodes).values(codeData).returning();
     return result[0];
   }
 
-  async getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]> {
-    return db.select().from(trainerInviteLinks)
-      .where(eq(trainerInviteLinks.trainerId, trainerId))
-      .orderBy(desc(trainerInviteLinks.createdAt));
+  async getTrainerDiscountCodes(trainerId: string): Promise<TrainerDiscountCode[]> {
+    return db.select().from(trainerDiscountCodes)
+      .where(eq(trainerDiscountCodes.trainerId, trainerId))
+      .orderBy(desc(trainerDiscountCodes.createdAt));
   }
 
-  async getTrainerInviteLinkByCode(code: string): Promise<TrainerInviteLink | undefined> {
-    const result = await db.select().from(trainerInviteLinks).where(eq(trainerInviteLinks.code, code)).limit(1);
-    return result[0];
-  }
-
-  async trackInviteLinkUse(code: string): Promise<void> {
-    // First, fetch the invite to check validity
-    const invite = await this.getTrainerInviteLinkByCode(code);
-    
-    if (!invite) {
-      throw new Error("Invite link not found");
-    }
-
-    // Check if invite has expired
-    if (invite.expiresAt && new Date() > invite.expiresAt) {
-      throw new Error("Invite link has expired");
-    }
-
-    // Check if invite has reached max uses
-    if (invite.maxUses !== null && invite.currentUses >= invite.maxUses) {
-      throw new Error("Invite link has reached maximum uses");
-    }
-
-    // Atomically increment usage if all checks pass
-    await db
-      .update(trainerInviteLinks)
-      .set({
-        currentUses: sql`${trainerInviteLinks.currentUses} + 1`,
-        lastUsedAt: new Date(),
-      })
+  async getActiveDiscountCodeForTrainer(trainerId: string): Promise<TrainerDiscountCode | undefined> {
+    const result = await db.select().from(trainerDiscountCodes)
       .where(
         and(
-          eq(trainerInviteLinks.code, code),
-          // Double-check constraints in the update to prevent race conditions
-          invite.maxUses !== null 
-            ? sql`${trainerInviteLinks.currentUses} < ${invite.maxUses}`
-            : sql`true`,
-          invite.expiresAt 
-            ? sql`${trainerInviteLinks.expiresAt} > NOW()`
-            : sql`true`
+          eq(trainerDiscountCodes.trainerId, trainerId),
+          sql`${trainerDiscountCodes.redeemedAt} IS NULL`,
+          sql`${trainerDiscountCodes.expiresAt} > NOW()`
         )
-      );
+      )
+      .orderBy(desc(trainerDiscountCodes.createdAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async getDiscountCodeByCode(code: string): Promise<TrainerDiscountCode | undefined> {
+    const result = await db.select().from(trainerDiscountCodes)
+      .where(eq(trainerDiscountCodes.code, code))
+      .limit(1);
+    return result[0];
+  }
+
+  async redeemDiscountCode(codeId: string, userId: string, purchaseId: string): Promise<void> {
+    await db
+      .update(trainerDiscountCodes)
+      .set({
+        redeemedAt: new Date(),
+        redeemedBy: userId,
+        redeemedByPurchaseId: purchaseId,
+      })
+      .where(eq(trainerDiscountCodes.id, codeId));
+  }
+
+  async canTrainerGenerateCode(trainerId: string): Promise<boolean> {
+    // Check if trainer is premium
+    const profile = await this.getTrainerProfile(trainerId);
+    if (!profile || profile.subscriptionStatus !== "premium") {
+      return false;
+    }
+
+    // Check if they have downgraded (downgrade disqualifies them)
+    if (profile.premiumDowngradedAt) {
+      return false;
+    }
+
+    // Check if they already have an active (unused, non-expired) code
+    const activeCode = await this.getActiveDiscountCodeForTrainer(trainerId);
+    if (activeCode) {
+      return false;
+    }
+
+    // Check if they've generated a code within the last 30 days
+    // Compare against EITHER last code creation OR premium join date (whichever is more recent)
+    const codes = await db.select().from(trainerDiscountCodes)
+      .where(eq(trainerDiscountCodes.trainerId, trainerId))
+      .orderBy(desc(trainerDiscountCodes.createdAt))
+      .limit(1);
+
+    if (codes.length > 0) {
+      const lastCode = codes[0];
+      const daysSinceLastCode = Math.floor((Date.now() - lastCode.createdAt!.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceLastCode < 30) {
+        return false;
+      }
+    } else if (profile.premiumJoinedAt) {
+      // No codes yet, check if 30 days have passed since joining premium
+      const daysSincePremiumJoin = Math.floor((Date.now() - profile.premiumJoinedAt.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSincePremiumJoin < 30) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // ==========================================

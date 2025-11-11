@@ -492,6 +492,8 @@ export const programPurchases = pgTable("program_purchases", {
   trainerId: varchar("trainer_id").notNull(),
   buyerId: varchar("buyer_id").notNull(), // User ID of purchaser
   purchasePrice: real("purchase_price").notNull(),
+  discountCodeId: varchar("discount_code_id"), // Reference to discount code used (null if no discount)
+  discountAmount: real("discount_amount"), // Amount discounted (null if no discount)
   platformFee: real("platform_fee").notNull(), // 20% of price
   trainerEarnings: real("trainer_earnings").notNull(), // 80% of price
   pricingType: text("pricing_type").notNull(), // one_time | subscription
@@ -644,6 +646,8 @@ export const trainerProfiles = pgTable("trainer_profiles", {
   certifications: text("certifications").array().default(sql`array[]::text[]`),
   socialLinks: json("social_links").$type<{ instagram?: string; website?: string; linkedin?: string }>(),
   subscriptionStatus: text("subscription_status").notNull().default("free"), // free | premium - Controls client limit (5 free, unlimited premium)
+  premiumJoinedAt: timestamp("premium_joined_at"), // When user first became premium (for 30-day discount code cycles)
+  premiumDowngradedAt: timestamp("premium_downgraded_at"), // When user downgraded from premium (invalidates code generation)
   onboardingStatus: text("onboarding_status").notNull().default("pending"), // pending | bio_complete | expertise_complete | completed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -671,29 +675,29 @@ export const insertTrainerProfileSchema = createInsertSchema(trainerProfiles).om
 export type InsertTrainerProfile = z.infer<typeof insertTrainerProfileSchema>;
 export type TrainerProfile = typeof trainerProfiles.$inferSelect;
 
-// TABLE: trainerInviteLinks - Client invite link system
-// Trainers generate shareable links to invite clients
-export const trainerInviteLinks = pgTable("trainer_invite_links", {
+// TABLE: trainerDiscountCodes - Monthly discount code system for premium trainers
+// Premium trainers can generate 1 discount code per 30-day cycle (25% off program purchases)
+export const trainerDiscountCodes = pgTable("trainer_discount_codes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   trainerId: varchar("trainer_id").notNull(),
-  code: varchar("code").notNull(), // Unique invite code (e.g., "TRAIN-ABC123")
-  customMessage: text("custom_message"),
-  targetProgramId: varchar("target_program_id"), // Optional: Pre-select specific program
-  maxUses: integer("max_uses"), // null = unlimited
-  currentUses: integer("current_uses").notNull().default(0),
-  expiresAt: timestamp("expires_at"), // null = never expires
-  lastUsedAt: timestamp("last_used_at"),
+  code: varchar("code").notNull().unique(), // Unique discount code (e.g., "ALEX25-X7KP")
   createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(), // Auto-set to createdAt + 30 days
+  redeemedAt: timestamp("redeemed_at"), // When code was used (null = unused)
+  redeemedBy: varchar("redeemed_by"), // User ID who redeemed the code
+  redeemedByPurchaseId: varchar("redeemed_by_purchase_id"), // Purchase ID that used this code
 }, (table) => [
-  uniqueIndex("trainer_invite_code_unique").on(table.trainerId, table.code),
+  index("trainer_discount_codes_trainer_idx").on(table.trainerId),
+  index("trainer_discount_codes_code_idx").on(table.code),
 ]);
 
-export const insertTrainerInviteLinkSchema = createInsertSchema(trainerInviteLinks).omit({
+export const insertTrainerDiscountCodeSchema = createInsertSchema(trainerDiscountCodes).omit({
   id: true,
-  currentUses: true,
-  lastUsedAt: true,
   createdAt: true,
+  redeemedAt: true,
+  redeemedBy: true,
+  redeemedByPurchaseId: true,
 });
 
-export type InsertTrainerInviteLink = z.infer<typeof insertTrainerInviteLinkSchema>;
-export type TrainerInviteLink = typeof trainerInviteLinks.$inferSelect;
+export type InsertTrainerDiscountCode = z.infer<typeof insertTrainerDiscountCodeSchema>;
+export type TrainerDiscountCode = typeof trainerDiscountCodes.$inferSelect;

@@ -1,4 +1,6 @@
 import { storage } from "./storage";
+import { db } from "./db";
+import { trainerDiscountCodes } from "@shared/schema";
 
 const TRAINER_ID = 'test-trainer-123';
 
@@ -96,6 +98,10 @@ export async function seedDatabase() {
     // Main test trainer - Alex Martinez
     const existingProfile = await storage.getTrainerProfile(TRAINER_IDS.ALEX);
     
+    // Set premium join date to 45 days ago to allow code generation
+    const premiumJoinDate = new Date();
+    premiumJoinDate.setDate(premiumJoinDate.getDate() - 45);
+    
     if (!existingProfile) {
       await storage.createTrainerProfile({
         userId: TRAINER_IDS.ALEX,
@@ -109,12 +115,14 @@ export async function seedDatabase() {
           website: 'https://alexmartinezfitness.com',
         },
         subscriptionStatus: 'premium',
+        premiumJoinedAt: premiumJoinDate,
         onboardingStatus: 'completed',
       });
     } else if (existingProfile.username !== 'alexmartinez') {
       await storage.updateTrainerProfile(TRAINER_IDS.ALEX, {
         username: 'alexmartinez',
         subscriptionStatus: 'premium',
+        premiumJoinedAt: premiumJoinDate,
       });
     }
 
@@ -772,36 +780,54 @@ export async function seedDatabase() {
       console.log('[SEED] Created 4 pending invitations (2 trainer-initiated, 2 client-initiated)');
     }
 
-    // Add active invite links for Alex
-    console.log('[SEED] Creating invite links...');
+    // Add discount codes for Alex (premium trainer)
+    console.log('[SEED] Creating discount codes...');
     
-    const existingInviteLinks = await storage.getTrainerInviteLinks(TRAINER_IDS.ALEX);
-    if (existingInviteLinks.length > 0) {
-      console.log(`[SEED] Invite links already exist (${existingInviteLinks.length} found), skipping creation`);
+    const existingDiscountCodes = await storage.getTrainerDiscountCodes(TRAINER_IDS.ALEX);
+    if (existingDiscountCodes.length > 0) {
+      console.log(`[SEED] Discount codes already exist (${existingDiscountCodes.length} found), skipping creation`);
     } else {
-      await storage.createTrainerInviteLink({
-        trainerId: TRAINER_IDS.ALEX,
-        code: 'WELCOME2024',
-        maxUses: null, // Unlimited
-        expiresAt: null, // Never expires
-      });
-
-      await storage.createTrainerInviteLink({
-        trainerId: TRAINER_IDS.ALEX,
-        code: 'LIMITED10',
-        maxUses: 10,
-        expiresAt: null,
-      });
-
-      const oneWeekFromNow = new Date();
-      oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+      // Active unused code (created recently, expires in 25 days)
+      const activeTo = new Date();
+      activeTo.setDate(activeTo.getDate() + 25);
       
-      await storage.createTrainerInviteLink({
+      await storage.createTrainerDiscountCode({
         trainerId: TRAINER_IDS.ALEX,
-        code: 'FLASH7DAY',
-        maxUses: 50,
-        expiresAt: oneWeekFromNow,
+        code: 'ALEX25-X7KP',
+        expiresAt: activeTo,
       });
+
+      // Active used code (created 10 days ago, redeemed 5 days ago by Sarah)
+      const usedCreated = new Date();
+      usedCreated.setDate(usedCreated.getDate() - 10);
+      const usedExpires = new Date(usedCreated);
+      usedExpires.setDate(usedExpires.getDate() + 30);
+      const usedRedeemed = new Date();
+      usedRedeemed.setDate(usedRedeemed.getDate() - 5);
+      
+      await db.insert(trainerDiscountCodes).values({
+        trainerId: TRAINER_IDS.ALEX,
+        code: 'ALEX25-PREV1',
+        createdAt: usedCreated,
+        expiresAt: usedExpires,
+        redeemedAt: usedRedeemed,
+        redeemedBy: CLIENT_IDS.SARAH,
+      });
+
+      // Expired code (created 50 days ago, never used)
+      const expiredCreated = new Date();
+      expiredCreated.setDate(expiredCreated.getDate() - 50);
+      const expiredExpires = new Date(expiredCreated);
+      expiredExpires.setDate(expiredExpires.getDate() + 30);
+      
+      await db.insert(trainerDiscountCodes).values({
+        trainerId: TRAINER_IDS.ALEX,
+        code: 'ALEX25-OLD',
+        createdAt: expiredCreated,
+        expiresAt: expiredExpires,
+      });
+
+      console.log('[SEED] Created 3 discount codes (1 active unused, 1 used, 1 expired)');
     }
 
     console.log('[SEED] Database seed completed successfully!');

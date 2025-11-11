@@ -4171,108 +4171,133 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
-  // TRAINER INVITE LINK ROUTES
+  // TRAINER DISCOUNT CODE ROUTES
   // ==========================================
-  // Endpoints for managing client invite links
+  // Endpoints for premium trainers to generate monthly discount codes
 
-  // GET /api/trainer/invites - List trainer's invite links
-  app.get("/api/trainer/invites", isAuthenticated, async (req: any, res: Response) => {
+  // GET /api/trainer/discount-code - Get trainer's active discount code and eligibility
+  app.get("/api/trainer/discount-code", isAuthenticated, async (req: any, res: Response) => {
     try {
       const trainerId = req.user.claims.sub;
-      const invites = await storage.getTrainerInviteLinks(trainerId);
-      res.json(invites);
+      
+      // Get trainer profile to check subscription status
+      const profile = await storage.getTrainerProfile(trainerId);
+      if (!profile) {
+        return res.status(404).json({ error: "Trainer profile not found" });
+      }
+
+      // Get active code (if any)
+      const activeCode = await storage.getActiveDiscountCodeForTrainer(trainerId);
+      
+      // Check eligibility to generate new code
+      const canGenerate = await storage.canTrainerGenerateCode(trainerId);
+      
+      // Calculate cooldown info
+      let nextAvailableDate: string | null = null;
+      if (!canGenerate && !activeCode && profile.subscriptionStatus === "premium" && !profile.premiumDowngradedAt) {
+        // If not eligible and no active code, calculate when they can generate next
+        const codes = await storage.getTrainerDiscountCodes(trainerId);
+        if (codes.length > 0) {
+          const lastCode = codes[0];
+          const nextDate = new Date(lastCode.createdAt!);
+          nextDate.setDate(nextDate.getDate() + 30);
+          nextAvailableDate = nextDate.toISOString();
+        } else if (profile.premiumJoinedAt) {
+          const nextDate = new Date(profile.premiumJoinedAt);
+          nextDate.setDate(nextDate.getDate() + 30);
+          nextAvailableDate = nextDate.toISOString();
+        }
+      }
+      
+      res.json({
+        activeCode,
+        canGenerate,
+        isPremium: profile.subscriptionStatus === "premium",
+        isDowngraded: !!profile.premiumDowngradedAt,
+        nextAvailableDate,
+      });
     } catch (error) {
-      console.error("Error fetching trainer invites:", error);
-      res.status(500).json({ error: "Failed to fetch invites" });
+      console.error("Error fetching discount code:", error);
+      res.status(500).json({ error: "Failed to fetch discount code" });
     }
   });
 
-  // POST /api/trainer/invites - Create new invite link
-  app.post("/api/trainer/invites", isAuthenticated, async (req: any, res: Response) => {
+  // POST /api/trainer/discount-code - Generate new discount code
+  app.post("/api/trainer/discount-code", isAuthenticated, async (req: any, res: Response) => {
     try {
       const trainerId = req.user.claims.sub;
-      const { insertTrainerInviteLinkSchema } = await import("@shared/schema");
-
-      // Validate request body
-      const validatedData = insertTrainerInviteLinkSchema.parse(req.body);
-
-      // Ensure trainerId matches authenticated user
-      if (validatedData.trainerId !== trainerId) {
-        return res.status(403).json({ error: "Cannot create invite for another trainer" });
+      
+      // Check eligibility
+      const canGenerate = await storage.canTrainerGenerateCode(trainerId);
+      if (!canGenerate) {
+        return res.status(403).json({ error: "Not eligible to generate discount code" });
       }
 
-      const invite = await storage.createTrainerInviteLink(validatedData);
-      res.status(201).json(invite);
+      // Generate unique code (TRAINERNAME25-XXXX format)
+      const profile = await storage.getTrainerProfile(trainerId);
+      const username = profile?.username?.toUpperCase() || "TRAINER";
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const code = `${username}25-${randomSuffix}`;
+
+      // Set expiration to 30 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const discountCode = await storage.createTrainerDiscountCode({
+        trainerId,
+        code,
+        expiresAt,
+      });
+
+      res.status(201).json(discountCode);
     } catch (error) {
-      console.error("Error creating trainer invite:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid invite data", details: error.errors });
-      }
-      res.status(500).json({ error: "Failed to create invite" });
+      console.error("Error creating discount code:", error);
+      res.status(500).json({ error: "Failed to create discount code" });
     }
   });
 
   // ==========================================
-  // PUBLIC INVITE ROUTES
+  // PUBLIC DISCOUNT CODE ROUTES
   // ==========================================
-  // Public endpoints for invite landing pages
+  // Public endpoints for discount code validation
 
-  // GET /api/invites/:code - Get invite details by code (public)
-  app.get("/api/invites/:code", async (req: Request, res: Response) => {
+  // GET /api/discount-codes/:code - Validate discount code (public)
+  app.get("/api/discount-codes/:code", async (req: Request, res: Response) => {
     try {
       const { code } = req.params;
-      const invite = await storage.getTrainerInviteLinkByCode(code);
+      const discountCode = await storage.getDiscountCodeByCode(code);
 
-      if (!invite) {
-        return res.status(404).json({ error: "Invite not found" });
+      if (!discountCode) {
+        return res.status(404).json({ error: "Discount code not found", valid: false });
       }
 
-      // Check if invite is valid
-      if (invite.expiresAt && new Date() > new Date(invite.expiresAt)) {
-        return res.status(410).json({ error: "Invite has expired" });
+      // Check if already redeemed
+      if (discountCode.redeemedAt) {
+        return res.status(410).json({ error: "Discount code has already been used", valid: false });
       }
 
-      if (invite.maxUses !== null && invite.usageCount >= invite.maxUses) {
-        return res.status(410).json({ error: "Invite has reached maximum uses" });
+      // Check if expired
+      if (new Date() > discountCode.expiresAt) {
+        return res.status(410).json({ error: "Discount code has expired", valid: false });
       }
 
-      // Fetch trainer profile
-      const trainerProfile = await storage.getTrainerProfile(invite.trainerId);
-      const trainer = await storage.getUser(invite.trainerId);
+      // Fetch trainer info for display
+      const trainer = await storage.getUser(discountCode.trainerId);
+      const trainerProfile = await storage.getTrainerProfile(discountCode.trainerId);
 
       res.json({
-        invite,
+        valid: true,
+        discountPercent: 25,
+        code: discountCode.code,
+        expiresAt: discountCode.expiresAt,
         trainer: {
-          id: trainer?.id,
           name: [trainer?.firstName, trainer?.lastName].filter(Boolean).join(" ") || "Trainer",
-          email: trainer?.email,
-          profile: trainerProfile,
+          username: trainerProfile?.username,
         },
       });
     } catch (error) {
-      console.error("Error fetching invite:", error);
-      res.status(500).json({ error: "Failed to fetch invite" });
-    }
-  });
-
-  // POST /api/invites/:code/track - Track invite link usage
-  app.post("/api/invites/:code/track", async (req: Request, res: Response) => {
-    try {
-      const { code } = req.params;
-      await storage.trackInviteLinkUse(code);
-      res.status(200).json({ success: true });
-    } catch (error: any) {
-      console.error("Error tracking invite use:", error);
-      if (error.message?.includes("expired")) {
-        return res.status(410).json({ error: error.message });
-      }
-      if (error.message?.includes("maximum uses")) {
-        return res.status(410).json({ error: error.message });
-      }
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: "Failed to track invite use" });
+      console.error("Error validating discount code:", error);
+      res.status(500).json({ error: "Failed to validate discount code", valid: false });
     }
   });
 
@@ -4283,7 +4308,7 @@ Provide a helpful, motivating response that addresses their question using this 
   // POST /api/programs/purchase - Simulate program purchase
   app.post("/api/programs/purchase", async (req: Request, res: Response) => {
     try {
-      const { slug, buyerEmail } = req.body;
+      const { slug, buyerEmail, discountCode: discountCodeString } = req.body;
 
       if (!slug || !buyerEmail) {
         return res.status(400).json({ error: "Slug and buyer email are required" });
@@ -4293,6 +4318,29 @@ Provide a helpful, motivating response that addresses their question using this 
       const program = await storage.getPublicProgramBySlug(slug);
       if (!program || !program.isPublished) {
         return res.status(404).json({ error: "Program not found or not available" });
+      }
+
+      // Validate discount code if provided
+      let discountCodeData = null;
+      let discountAmount = 0;
+      
+      if (discountCodeString) {
+        discountCodeData = await storage.getDiscountCodeByCode(discountCodeString);
+        
+        if (!discountCodeData) {
+          return res.status(400).json({ error: "Invalid discount code" });
+        }
+        
+        if (discountCodeData.redeemedAt) {
+          return res.status(400).json({ error: "Discount code has already been used" });
+        }
+        
+        if (new Date() > discountCodeData.expiresAt) {
+          return res.status(400).json({ error: "Discount code has expired" });
+        }
+        
+        // Calculate 25% discount
+        discountAmount = program.price * 0.25;
       }
 
       // Create or get buyer user (simulated)
@@ -4311,8 +4359,8 @@ Provide a helpful, motivating response that addresses their question using this 
         });
       }
 
-      // Calculate fees
-      const purchasePrice = program.price;
+      // Calculate fees with discount applied
+      const purchasePrice = program.price - discountAmount;
       const platformFee = purchasePrice * 0.20; // 20%
       const trainerEarnings = purchasePrice * 0.80; // 80%
 
@@ -4362,18 +4410,25 @@ Provide a helpful, motivating response that addresses their question using this 
         }
       }
 
-      // Create purchase record with workout program reference
+      // Create purchase record with workout program reference and discount info
       const purchase = await storage.createProgramPurchase({
         trainerProgramId: program.id,
         trainerId: program.trainerId,
         buyerId: buyer.id,
         purchasePrice,
+        discountCodeId: discountCodeData?.id || null,
+        discountAmount: discountAmount > 0 ? discountAmount : null,
         platformFee,
         trainerEarnings,
         pricingType: program.pricingType,
         status: "completed",
         workoutProgramId: workoutProgram.id,
       });
+
+      // Redeem discount code if used
+      if (discountCodeData) {
+        await storage.redeemDiscountCode(discountCodeData.id, buyer.id, purchase.id);
+      }
 
       // Add client to trainer's roster
       await storage.createTrainerClient({
