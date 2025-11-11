@@ -10,8 +10,8 @@ import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrar
 import { InviteManager } from "@/components/trainer/InviteManager";
 import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
-import type { User } from "@shared/schema";
-import { AlertTriangle, MessageCircle } from "lucide-react";
+import type { User, TrainerProfile } from "@shared/schema";
+import { AlertTriangle, MessageCircle, Users, Crown } from "lucide-react";
 
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
@@ -22,6 +22,18 @@ export default function TrainerDashboard() {
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/auth/user"],
   });
+
+  // Fetch trainer profile for subscription status
+  const { data: trainerProfile, isLoading: isLoadingProfile } = useQuery<TrainerProfile>({
+    queryKey: ["/api/trainer/profile"],
+    retry: false,
+  });
+
+  const clientCount = stats.activeClients || 0;
+  const isPremium = trainerProfile?.subscriptionStatus === "premium";
+  const freeLimit = 5;
+  const isOverLimit = !isPremium && clientCount >= freeLimit;
+  const isNearLimit = !isPremium && clientCount === freeLimit - 1;
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,8 +61,56 @@ export default function TrainerDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* Alert Summary Cards */}
-        {!isLoadingClients && (stats.totalAlerts > 0 || stats.totalUnreadMessages > 0) && (
+        {!isLoadingClients && !isLoadingProfile && (stats.totalAlerts > 0 || stats.totalUnreadMessages > 0 || isNearLimit || isOverLimit) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {isOverLimit && (
+              <Card className="bg-orange-500/10 border-orange-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Users className="h-5 w-5 flex-shrink-0 text-orange-600 dark:text-orange-400" />
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid="text-client-limit-warning">
+                      {clientCount}/{freeLimit} clients - Limit reached
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Upgrade to premium for unlimited clients
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLocation('/settings')}
+                    data-testid="button-upgrade-from-dashboard"
+                  >
+                    <Crown className="h-4 w-4 mr-1" />
+                    Upgrade
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {isNearLimit && (
+              <Card className="bg-yellow-500/10 border-yellow-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Users className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid="text-client-limit-warning">
+                      {clientCount}/{freeLimit} clients - Approaching limit
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Consider upgrading for unlimited clients
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLocation('/settings')}
+                    data-testid="button-upgrade-from-dashboard"
+                  >
+                    <Crown className="h-4 w-4 mr-1" />
+                    Upgrade
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
             {stats.totalAlerts > 0 && (
               <Card className="bg-destructive/10 border-destructive/20">
                 <CardContent className="p-4 flex items-center gap-3">
