@@ -14,6 +14,7 @@ import {
   DollarSign,
   Calendar,
   Dumbbell,
+  Clock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -215,6 +216,14 @@ export default function TrainerProgramsList() {
                       {program.durationWeeks} weeks • {program.daysPerWeek} days/week
                     </span>
                   </div>
+                  {(program as any).avg_duration > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        {(program as any).avg_duration} min avg • {(program as any).workout_count} workouts
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold" data-testid={`text-program-price-${index}`}>

@@ -9,6 +9,8 @@ import { ProgramBuilderProvider, useProgramBuilder } from "@/contexts/ProgramBui
 import ProgramBasicInfo from "@/components/trainer/ProgramBasicInfo";
 import WorkoutBuilder from "@/components/trainer/WorkoutBuilder";
 import ProgramPricing from "@/components/trainer/ProgramPricing";
+import { computeWorkoutDuration } from "@shared/workoutDuration";
+import { mapWorkoutExercisesToDuration } from "@shared/workoutAdapters";
 
 interface ProgramBuilderProps {
   mode?: "template" | "scratch";
@@ -50,29 +52,34 @@ function ProgramBuilderContent({ mode }: { mode: "template" | "scratch" }) {
       // Then create workouts and exercises
       if (state.workouts.length > 0) {
         // Transform workouts to match API expectations (remove client-side IDs)
-        const workoutsPayload = state.workouts.map((w) => ({
-          weekNumber: w.weekNumber,
-          dayNumber: w.dayNumber,
-          workoutName: w.workoutName,
-          description: w.description,
-          movementFocus: w.movementFocus,
-          estimatedDuration: w.estimatedDuration,
-          orderIndex: w.orderIndex,
-          exercises: w.exercises.map((e) => ({
-            exerciseId: e.exerciseId,
-            customExerciseId: e.customExerciseId,
-            exerciseName: e.exerciseName,
-            sets: e.sets,
-            reps: e.reps,
-            weight: e.weight,
-            tempo: e.tempo,
-            restSeconds: e.restSeconds,
-            targetRPE: e.targetRPE,
-            targetRIR: e.targetRIR,
-            notes: e.notes,
-            orderIndex: e.orderIndex,
-          })),
-        }));
+        // Compute actual duration for each workout based on exercises
+        const workoutsPayload = state.workouts.map((w) => {
+          const exerciseDuration = computeWorkoutDuration(mapWorkoutExercisesToDuration(w.exercises));
+          
+          return {
+            weekNumber: w.weekNumber,
+            dayNumber: w.dayNumber,
+            workoutName: w.workoutName,
+            description: w.description,
+            movementFocus: w.movementFocus,
+            estimatedDuration: exerciseDuration,
+            orderIndex: w.orderIndex,
+            exercises: w.exercises.map((e) => ({
+              exerciseId: e.exerciseId,
+              customExerciseId: e.customExerciseId,
+              exerciseName: e.exerciseName,
+              sets: e.sets,
+              reps: e.reps,
+              weight: e.weight,
+              tempo: e.tempo,
+              restSeconds: e.restSeconds,
+              targetRPE: e.targetRPE,
+              targetRIR: e.targetRIR,
+              notes: e.notes,
+              orderIndex: e.orderIndex,
+            })),
+          };
+        });
 
         await apiRequest(`/api/trainer/programs/${program.id}/workouts`, "POST", {
           workouts: workoutsPayload,

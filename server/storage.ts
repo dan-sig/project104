@@ -49,6 +49,10 @@ import {
   type InsertTrainerClient,
   type TrainerClientRoster,
   type TrainerSalesMetrics,
+  type TrainerProfile,
+  type InsertTrainerProfile,
+  type TrainerInviteLink,
+  type InsertTrainerInviteLink,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -115,7 +119,7 @@ export interface IStorage {
   updateTrainerCustomExercise(id: string, updates: Partial<TrainerCustomExercise>): Promise<TrainerCustomExercise | undefined>;
   deleteTrainerCustomExercise(id: string): Promise<void>;
   
-  getTrainerPrograms(trainerId: string): Promise<TrainerProgram[]>;
+  getTrainerPrograms(trainerId: string): Promise<any[]>; // Returns TrainerProgram with duration stats
   getTrainerProgram(id: string): Promise<TrainerProgram | undefined>;
   createTrainerProgram(program: InsertTrainerProgram): Promise<TrainerProgram>;
   updateTrainerProgram(id: string, updates: Partial<TrainerProgram>): Promise<TrainerProgram | undefined>;
@@ -726,10 +730,22 @@ export class DbStorage implements IStorage {
   // ==========================================
   // TRAINER PROGRAM OPERATIONS
   // ==========================================
-  async getTrainerPrograms(trainerId: string): Promise<TrainerProgram[]> {
-    return db.select().from(trainerPrograms)
-      .where(eq(trainerPrograms.trainerId, trainerId))
-      .orderBy(desc(trainerPrograms.createdAt));
+  async getTrainerPrograms(trainerId: string): Promise<any[]> {
+    // Aggregate workout duration stats using raw SQL for better control
+    const result = await db.execute(sql`
+      SELECT 
+        p.*,
+        COALESCE(AVG(w.estimated_duration)::integer, 0) as avg_duration,
+        COALESCE(SUM(w.estimated_duration)::integer, 0) as total_duration,
+        COALESCE(COUNT(w.id)::integer, 0) as workout_count
+      FROM trainer_programs p
+      LEFT JOIN trainer_program_workouts w ON p.id = w.trainer_program_id
+      WHERE p.trainer_id = ${trainerId}
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `);
+    
+    return result.rows as any[];
   }
 
   async getTrainerProgram(id: string): Promise<TrainerProgram | undefined> {
