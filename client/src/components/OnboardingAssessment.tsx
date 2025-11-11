@@ -34,6 +34,7 @@ import TestTypeSelector from "./TestTypeSelector";
 import FitnessTestForm, { type FitnessTestResults } from "./FitnessTestForm";
 import WeightsTestForm, { type WeightsTestResults } from "./WeightsTestForm";
 import { DayPicker } from "./DayPicker";
+import CoachConnectionStep from "./CoachConnectionStep";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -41,7 +42,7 @@ import { formatLocalDate, getTodayLocal } from "@shared/dateUtils";
 import type { FitnessProgramData } from "../../../server/prompt-parser";
 
 // Defines which step of onboarding the user is on
-type AssessmentStep = "intro" | "prompt" | "questionnaire" | "nutrition" | "testSelection" | "fitnessTest" | "weightsTest" | "dateSelection";
+type AssessmentStep = "intro" | "prompt" | "questionnaire" | "nutrition" | "testSelection" | "fitnessTest" | "weightsTest" | "dateSelection" | "coachConnection";
 
 export default function OnboardingAssessment() {
   // ==========================================
@@ -52,7 +53,7 @@ export default function OnboardingAssessment() {
   const { toast } = useToast();  // Popup notification function
   
   // STATE: Which step is user currently on?
-  // Flow: intro → prompt → (optional testSelection/fitnessTest) → dateSelection
+  // Flow: intro → prompt → (optional testSelection/fitnessTest) → dateSelection → coachConnection → submit
   const [currentStep, setCurrentStep] = useState<AssessmentStep>("intro");
   
   // STATE: Data parsed from AI prompt
@@ -78,6 +79,10 @@ export default function OnboardingAssessment() {
   // STATE: Selected dates for workout cycle (replaces selectedDays)
   // Array of calendar dates (YYYY-MM-DD strings) chosen by user for their workouts
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  
+  // STATE: Pending coach username from connection step (optional)
+  // Trainer username the user wants to connect with during onboarding
+  const [pendingCoachUsername, setPendingCoachUsername] = useState<string | undefined>();
 
   // ==========================================
   // MUTATION: Submit Complete Onboarding Data
@@ -165,6 +170,56 @@ export default function OnboardingAssessment() {
   const handleDateSelection = (dates: string[]) => {
     console.log('[ONBOARDING] handleDateSelection called with dates:', dates);
     
+    // Store selected dates and move to coach connection step
+    setSelectedDates(dates);
+    setCurrentStep("coachConnection");
+  };
+
+  const handleCoachComplete = async (trainerUsername?: string) => {
+    console.log('[ONBOARDING] handleCoachComplete called with trainerUsername:', trainerUsername);
+    
+    // Store trainer username if provided
+    if (trainerUsername) {
+      setPendingCoachUsername(trainerUsername);
+      
+      // Attempt to connect to trainer before completing onboarding
+      try {
+        console.log('[ONBOARDING] Connecting to trainer:', trainerUsername);
+        await apiRequest("POST", "/api/client/connect-trainer", {
+          trainerUsername,
+        });
+        
+        toast({
+          title: "Coach Connected!",
+          description: `Successfully connected with ${trainerUsername}`,
+        });
+      } catch (error: any) {
+        // Tolerate already-linked errors, but warn for other failures
+        const errorMessage = error?.response?.error ?? error?.response?.data?.error ?? error?.message ?? "Failed to connect";
+        
+        if (errorMessage.includes("already connected")) {
+          toast({
+            title: "Already Connected",
+            description: `You're already connected with ${trainerUsername}`,
+          });
+        } else {
+          console.error('[ONBOARDING] Failed to connect to trainer:', error);
+          toast({
+            title: "Connection Failed",
+            description: `${errorMessage}. You can connect later in Settings.`,
+            variant: "destructive",
+          });
+        }
+      }
+    }
+    
+    // Continue with onboarding completion regardless of coach connection result
+    submitOnboarding();
+  };
+
+  const submitOnboarding = () => {
+    console.log('[ONBOARDING] submitOnboarding called');
+    
     try {
       // Build complete data with all collected information
       const completeData = {
@@ -174,7 +229,7 @@ export default function OnboardingAssessment() {
         workoutDuration: promptData?.sessionDuration || questionnaireData?.availability?.minutesPerSession,
         daysPerWeek: promptData?.daysPerWeek || questionnaireData?.availability?.daysPerWeek,
         focusCycle: promptData?.focusCycle || nutritionData?.goal,
-        selectedDates: dates,  // Calendar dates for workout scheduling
+        selectedDates: selectedDates,  // Calendar dates for workout scheduling
         
         // Legacy questionnaire data (for backwards compatibility)
         unitPreference: questionnaireData?.unitPreference,
@@ -321,7 +376,15 @@ export default function OnboardingAssessment() {
                 setCurrentStep("testSelection");
               }
             }}
-            onConfirm={() => handleDateSelection(selectedDates)}  // Submit only on confirmation
+            onConfirm={() => handleDateSelection(selectedDates)}  // Move to coach connection step
+          />
+        );
+
+      case "coachConnection":
+        return (
+          <CoachConnectionStep
+            onComplete={handleCoachComplete}
+            onBack={() => setCurrentStep("dateSelection")}
           />
         );
 
