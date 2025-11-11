@@ -111,7 +111,7 @@ export async function seedDatabase() {
         subscriptionStatus: 'premium',
         onboardingStatus: 'completed',
       });
-    } else if (!existingProfile.username) {
+    } else if (existingProfile.username !== 'alexmartinez') {
       await storage.updateTrainerProfile(TRAINER_IDS.ALEX, {
         username: 'alexmartinez',
         subscriptionStatus: 'premium',

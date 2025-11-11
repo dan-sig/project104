@@ -4051,8 +4051,10 @@ Provide a helpful, motivating response that addresses their question using this 
       let invites;
       if (trainerProfile) {
         // Trainers see both sent and received invites
-        const sent = await storage.getTrainerInvites(userId);
-        const received = await storage.getClientInvites(userId);
+        const allInvites = await storage.getTrainerInvites(userId);
+        // Split into sent (trainer initiated) and received (client initiated)
+        const sent = allInvites.filter(invite => invite.initiatorRole === "trainer");
+        const received = allInvites.filter(invite => invite.initiatorRole === "client");
         
         invites = {
           sent,
