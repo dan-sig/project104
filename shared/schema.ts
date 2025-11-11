@@ -27,7 +27,7 @@
 // ==========================================
 
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, real, timestamp, date, json, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, real, timestamp, date, json, index, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -75,6 +75,7 @@ export const users = pgTable("users", {
   cycleNumber: integer("cycle_number").default(1),  // NEW: Tracks which 7-day cycle user is on
   totalWorkoutsCompleted: integer("total_workouts_completed").default(0),  // NEW: Total workouts completed across all cycles
   fitnessLevel: text("fitness_level"),
+  isDiscoverable: boolean("is_discoverable").notNull().default(true), // Privacy: Allow trainers to search and find this user
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -530,6 +531,32 @@ export const insertTrainerClientSchema = createInsertSchema(trainerClients).omit
 
 export type InsertTrainerClient = z.infer<typeof insertTrainerClientSchema>;
 export type TrainerClient = typeof trainerClients.$inferSelect;
+
+// TABLE: trainerClientInvites - Bidirectional invite system for trainer-client connections
+// Tracks pending, accepted, declined, and canceled invitations initiated by either party
+export const trainerClientInvites = pgTable("trainer_client_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(), // User ID of the trainer
+  clientId: varchar("client_id").notNull(), // User ID of the client
+  status: text("status").notNull().default("pending"), // pending | accepted | declined | canceled | expired
+  initiatorRole: text("initiator_role").notNull(), // trainer | client - Who sent the invite
+  message: text("message"), // Optional message from the inviter
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"), // When invite was accepted/declined
+  expiresAt: timestamp("expires_at"), // Optional expiration (e.g., 30 days from creation)
+});
+
+export const insertTrainerClientInviteSchema = createInsertSchema(trainerClientInvites).omit({
+  id: true,
+  createdAt: true,
+  respondedAt: true,
+}).extend({
+  status: z.enum(["pending", "accepted", "declined", "canceled", "expired"]).default("pending"),
+  initiatorRole: z.enum(["trainer", "client"]),
+});
+
+export type InsertTrainerClientInvite = z.infer<typeof insertTrainerClientInviteSchema>;
+export type TrainerClientInvite = typeof trainerClientInvites.$inferSelect;
 
 // ==========================================
 // TRAINER DASHBOARD API RESPONSE TYPES

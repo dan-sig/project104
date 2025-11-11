@@ -53,6 +53,8 @@ import {
   type InsertTrainerProfile,
   type TrainerInviteLink,
   type InsertTrainerInviteLink,
+  type TrainerClientInvite,
+  type InsertTrainerClientInvite,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -158,6 +160,13 @@ export interface IStorage {
   getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]>;
   getTrainerInviteLinkByCode(code: string): Promise<TrainerInviteLink | undefined>;
   trackInviteLinkUse(code: string): Promise<void>;
+  
+  createTrainerClientInvite(invite: InsertTrainerClientInvite): Promise<TrainerClientInvite>;
+  getTrainerInvites(trainerId: string): Promise<TrainerClientInvite[]>;
+  getClientInvites(clientId: string): Promise<TrainerClientInvite[]>;
+  getInviteById(inviteId: string): Promise<TrainerClientInvite | undefined>;
+  updateInviteStatus(inviteId: string, status: string, respondedAt?: Date): Promise<TrainerClientInvite | undefined>;
+  checkDuplicateInvite(trainerId: string, clientId: string): Promise<TrainerClientInvite | undefined>;
 }
 
 
@@ -179,6 +188,7 @@ import {
   trainerClients,
   trainerProfiles,
   trainerInviteLinks,
+  trainerClientInvites,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 
@@ -1094,6 +1104,59 @@ export class DbStorage implements IStorage {
             : sql`true`
         )
       );
+  }
+
+  // ==========================================
+  // TRAINER CLIENT INVITE OPERATIONS
+  // ==========================================
+  async createTrainerClientInvite(invite: InsertTrainerClientInvite): Promise<TrainerClientInvite> {
+    const result = await db.insert(trainerClientInvites).values(invite).returning();
+    return result[0];
+  }
+
+  async getTrainerInvites(trainerId: string): Promise<TrainerClientInvite[]> {
+    return db.select().from(trainerClientInvites)
+      .where(eq(trainerClientInvites.trainerId, trainerId))
+      .orderBy(desc(trainerClientInvites.createdAt));
+  }
+
+  async getClientInvites(clientId: string): Promise<TrainerClientInvite[]> {
+    return db.select().from(trainerClientInvites)
+      .where(eq(trainerClientInvites.clientId, clientId))
+      .orderBy(desc(trainerClientInvites.createdAt));
+  }
+
+  async getInviteById(inviteId: string): Promise<TrainerClientInvite | undefined> {
+    const result = await db.select().from(trainerClientInvites)
+      .where(eq(trainerClientInvites.id, inviteId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateInviteStatus(inviteId: string, status: string, respondedAt?: Date): Promise<TrainerClientInvite | undefined> {
+    const updateData: any = { status };
+    
+    // Only set respondedAt if provided (for accept/decline, not cancel)
+    if (respondedAt) {
+      updateData.respondedAt = respondedAt;
+    }
+    
+    const result = await db.update(trainerClientInvites)
+      .set(updateData)
+      .where(eq(trainerClientInvites.id, inviteId))
+      .returning();
+    return result[0];
+  }
+
+  async checkDuplicateInvite(trainerId: string, clientId: string): Promise<TrainerClientInvite | undefined> {
+    const result = await db.select().from(trainerClientInvites)
+      .where(and(
+        eq(trainerClientInvites.trainerId, trainerId),
+        eq(trainerClientInvites.clientId, clientId),
+        eq(trainerClientInvites.status, "pending")
+      ))
+      .limit(1);
+    return result[0];
   }
 }
 

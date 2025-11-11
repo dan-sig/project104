@@ -3934,6 +3934,237 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
+  // USER SEARCH & INVITE ROUTES
+  // ==========================================
+  // Endpoints for trainer-client bidirectional invite system
+
+  // GET /api/users/search - Search for users by email/name (trainers only)
+  app.get("/api/users/search", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { query } = req.query;
+      
+      // Enforce trainer-only access
+      const trainerProfile = await storage.getTrainerProfile(userId);
+      if (!trainerProfile) {
+        return res.status(403).json({ error: "Only trainers can search for users" });
+      }
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: "Search query is required" });
+      }
+
+      // Only discoverable users can be searched
+      const searchQuery = query.toLowerCase().trim();
+      const searchResults = await db.select({
+        id: users.id,
+        name: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        email: users.email,
+      })
+        .from(users)
+        .where(
+          and(
+            eq(users.isDiscoverable, true),
+            or(
+              sql`LOWER(${users.email}) LIKE ${`%${searchQuery}%`}`,
+              sql`LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE ${`%${searchQuery}%`}`
+            )
+          )
+        )
+        .limit(10);
+
+      res.json({ users: searchResults });
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
+
+  // POST /api/invites - Create a new trainer-client invite
+  app.post("/api/invites", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { insertTrainerClientInviteSchema } = await import("@shared/schema");
+      
+      // Validate request body
+      const validatedData = insertTrainerClientInviteSchema.parse(req.body);
+      
+      // Determine if user is trainer or client
+      const trainerProfile = await storage.getTrainerProfile(userId);
+      const isTrainer = !!trainerProfile;
+      
+      // Validate initiator matches authenticated user
+      if (isTrainer && validatedData.initiatorRole !== "trainer") {
+        return res.status(403).json({ error: "Trainers must use initiatorRole: 'trainer'" });
+      }
+      if (!isTrainer && validatedData.initiatorRole !== "client") {
+        return res.status(403).json({ error: "Clients must use initiatorRole: 'client'" });
+      }
+      
+      // Validate authenticated user matches trainerId/clientId based on role
+      if (validatedData.initiatorRole === "trainer" && validatedData.trainerId !== userId) {
+        return res.status(403).json({ error: "Cannot create invites for another trainer" });
+      }
+      if (validatedData.initiatorRole === "client" && validatedData.clientId !== userId) {
+        return res.status(403).json({ error: "Cannot create invites for another client" });
+      }
+      
+      // Check for existing active connection
+      const existingConnection = await storage.getTrainerClientConnection(
+        validatedData.trainerId,
+        validatedData.clientId
+      );
+      if (existingConnection) {
+        return res.status(409).json({ error: "Connection already exists" });
+      }
+      
+      // Check for duplicate pending invite
+      const duplicateInvite = await storage.checkDuplicateInvite(
+        validatedData.trainerId,
+        validatedData.clientId
+      );
+      if (duplicateInvite) {
+        return res.status(409).json({ error: "Invite already sent" });
+      }
+      
+      // Create the invite
+      const invite = await storage.createTrainerClientInvite(validatedData);
+      
+      res.status(201).json({ success: true, invite });
+    } catch (error) {
+      console.error("Error creating invite:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid invite data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create invite" });
+    }
+  });
+
+  // GET /api/invites - List invites for authenticated user
+  app.get("/api/invites", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if user is a trainer
+      const trainerProfile = await storage.getTrainerProfile(userId);
+      
+      let invites;
+      if (trainerProfile) {
+        // Trainers see both sent and received invites
+        const sent = await storage.getTrainerInvites(userId);
+        const received = await storage.getClientInvites(userId);
+        
+        invites = {
+          sent,
+          received,
+        };
+      } else {
+        // Clients only see received invites
+        const received = await storage.getClientInvites(userId);
+        invites = { received };
+      }
+      
+      res.json(invites);
+    } catch (error) {
+      console.error("Error fetching invites:", error);
+      res.status(500).json({ error: "Failed to fetch invites" });
+    }
+  });
+
+  // PATCH /api/invites/:id - Update invite status (accept/decline/cancel)
+  app.patch("/api/invites/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      // Validate status
+      const validStatuses = ["accepted", "declined", "canceled"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be: accepted, declined, or canceled" });
+      }
+      
+      // Fetch the invite
+      const invite = await storage.getInviteById(id);
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+      
+      // Check if invite is already processed
+      if (invite.status !== "pending") {
+        return res.status(409).json({ error: `Invite already ${invite.status}` });
+      }
+      
+      // Verify user is part of this invite (trainer or client)
+      const isTrainer = invite.trainerId === userId;
+      const isClient = invite.clientId === userId;
+      
+      if (!isTrainer && !isClient) {
+        return res.status(403).json({ error: "You are not part of this invite" });
+      }
+      
+      // Authorize action based on status and user role
+      if (status === "canceled") {
+        // Only the initiator can cancel
+        const isInitiator = (invite.initiatorRole === "trainer" && isTrainer) ||
+                           (invite.initiatorRole === "client" && isClient);
+        if (!isInitiator) {
+          return res.status(403).json({ error: "Only the invite sender can cancel" });
+        }
+        
+        // Cancel doesn't set respondedAt (invite was never responded to)
+        const updatedInvite = await storage.updateInviteStatus(id, status);
+        return res.json({ success: true, invite: updatedInvite });
+      } else {
+        // Only the recipient can accept/decline
+        const isRecipient = (invite.initiatorRole === "trainer" && isClient) ||
+                           (invite.initiatorRole === "client" && isTrainer);
+        if (!isRecipient) {
+          return res.status(403).json({ error: "Only the invite recipient can accept or decline" });
+        }
+      }
+      
+      // If accepting, validate freemium limits and create connection
+      if (status === "accepted") {
+        // Check trainer's client limit
+        const clientCount = await storage.getTrainerClientCount(invite.trainerId);
+        const trainerProfile = await storage.getTrainerProfile(invite.trainerId);
+        const isFreeTrainer = trainerProfile?.subscriptionStatus !== 'premium';
+        const FREE_CLIENT_LIMIT = 5;
+        
+        if (isFreeTrainer && clientCount >= FREE_CLIENT_LIMIT) {
+          return res.status(403).json({ 
+            error: "Trainer has reached their client limit",
+            limit: FREE_CLIENT_LIMIT,
+            upgradeRequired: true
+          });
+        }
+        
+        // Create the trainer-client connection
+        const { insertTrainerClientSchema } = await import("@shared/schema");
+        const connectionData = insertTrainerClientSchema.parse({
+          trainerId: invite.trainerId,
+          clientId: invite.clientId,
+          sourcePurchaseId: null,
+        });
+        
+        await storage.createTrainerClient(connectionData);
+      }
+      
+      // Update invite status with respondedAt timestamp (for accept/decline only)
+      const updatedInvite = await storage.updateInviteStatus(id, status, new Date());
+      
+      res.json({ success: true, invite: updatedInvite });
+    } catch (error) {
+      console.error("Error updating invite:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid update data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update invite" });
+    }
+  });
+
+  // ==========================================
   // TRAINER INVITE LINK ROUTES
   // ==========================================
   // Endpoints for managing client invite links
