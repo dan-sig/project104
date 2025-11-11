@@ -40,7 +40,7 @@ The backend is an Express.js server developed with TypeScript, handling JSON req
 - **Calorie Tracking & Cardio Variety**: Incorporates MET calculations and goal-based cardio type rotation.
 - **HIIT Interval Training**: Supports automated timers and custom intervals.
 - **Unified Program Settings**: Combines nutrition and workout preferences, triggering program regeneration.
-- **Trainer Marketplace**: Allows trainers to create custom exercises, build, publish, and sell training programs, and manage clients. Features include a 3-step onboarding wizard, invite system for clients, program builder, publishing flow, and a sales dashboard for revenue/client tracking.
+- **Trainer Marketplace**: Allows trainers to create custom exercises, build, publish, and sell training programs, and manage clients. Features include a 3-step onboarding wizard with required username selection, freemium coach connection system (5 free client slots, premium for unlimited), soft-delete architecture for trainer-client disconnections, username-based coach discovery, program builder, publishing flow, and a sales dashboard for revenue/client tracking. Clients can connect with coaches via username search in settings or during onboarding.
 
 ## External Dependencies
 - **UI Libraries**: Radix UI primitives, Recharts, date-fns, cmdk, Lucide React.
