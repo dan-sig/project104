@@ -150,6 +150,30 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Development mode bypass - inject fake test user
+  if (process.env.NODE_ENV === 'development') {
+    const fakeUser = {
+      claims: {
+        sub: 'test-trainer-123',
+        email: 'alex.trainer@morphit.dev',
+        first_name: 'Alex',
+        last_name: 'Martinez',
+        profile_image_url: null,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      access_token: 'fake-dev-token',
+      refresh_token: 'fake-dev-refresh',
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    };
+    
+    // Ensure test user exists in database
+    await upsertUser(fakeUser.claims);
+    
+    // Inject fake user into request
+    (req as any).user = fakeUser;
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

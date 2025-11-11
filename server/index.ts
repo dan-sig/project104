@@ -72,7 +72,17 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Seed database in development mode
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const { seedDatabase } = await import('./seed');
+        await seedDatabase();
+      } catch (error) {
+        console.error('[SERVER] Failed to seed database:', error);
+      }
+    }
   });
 })();
