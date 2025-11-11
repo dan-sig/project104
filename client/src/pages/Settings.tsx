@@ -21,7 +21,10 @@ import {
   Dumbbell,
   RefreshCw,
   Settings as SettingsIcon,
-  Loader2
+  Loader2,
+  Check,
+  X,
+  Briefcase
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -58,6 +61,8 @@ import { calculateAge } from "@shared/utils";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toggleEquipment as toggleEquipmentUtil } from "@/lib/equipmentUtils";
 import { DayPicker } from "@/components/DayPicker";
+import type { TrainerProfile } from "@shared/schema";
+import { usernameSchema, checkUsernameAvailability, type UsernameAvailability } from "@/lib/usernameValidation";
 
 export default function Settings() {
   const [, setLocation] = useLocation();
@@ -88,6 +93,22 @@ export default function Settings() {
   const [originalWorkoutDuration, setOriginalWorkoutDuration] = useState(60);
   const [originalGoal, setOriginalGoal] = useState("move");
   const [originalSelectedDates, setOriginalSelectedDates] = useState<string[]>([]);
+
+  // Trainer-specific state
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>({
+    checking: false,
+    available: null,
+    message: "",
+  });
+
+  // Fetch trainer profile only if user is a trainer
+  const { data: trainerProfile } = useQuery<TrainerProfile>({
+    queryKey: ["/api/trainer/profile"],
+    enabled: user?.role === "trainer",
+    retry: false,
+  });
 
   useEffect(() => {
     if (user) {
@@ -154,9 +175,88 @@ export default function Settings() {
     },
   });
 
+  const updateTrainerProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("PATCH", "/api/trainer/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trainer/profile"] });
+      setIsEditingUsername(false);
+      setUsernameAvailability({ checking: false, available: null, message: "" });
+      toast({
+        title: "Profile updated",
+        description: "Your trainer username has been successfully updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update username. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = () => {
     // Properly logout from Replit Auth session
     window.location.href = "/api/logout";
+  };
+
+  const handleEditUsername = () => {
+    setNewUsername(trainerProfile?.username || "");
+    setIsEditingUsername(true);
+    setUsernameAvailability({ checking: false, available: null, message: "" });
+  };
+
+  const handleCancelUsernameEdit = () => {
+    setIsEditingUsername(false);
+    setNewUsername("");
+    setUsernameAvailability({ checking: false, available: null, message: "" });
+  };
+
+  const handleUsernameChange = async (value: string) => {
+    setNewUsername(value);
+    
+    if (!value || value.length < 3) {
+      setUsernameAvailability({ checking: false, available: null, message: "" });
+      return;
+    }
+
+    // Don't check availability if it's the same as current username
+    if (value.toLowerCase() === trainerProfile?.username?.toLowerCase()) {
+      setUsernameAvailability({ checking: false, available: true, message: "This is your current username" });
+      return;
+    }
+
+    setUsernameAvailability({ checking: true, available: null, message: "Checking availability..." });
+    const result = await checkUsernameAvailability(value);
+    setUsernameAvailability(result);
+  };
+
+  const handleSaveUsername = async () => {
+    try {
+      usernameSchema.parse(newUsername);
+    } catch (error) {
+      toast({
+        title: "Invalid Username",
+        description: "Username must be 3-30 characters and contain only letters, numbers, and underscores.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (usernameAvailability.available !== true && newUsername.toLowerCase() !== trainerProfile?.username?.toLowerCase()) {
+      toast({
+        title: "Username Unavailable",
+        description: "Please choose a different username.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await updateTrainerProfileMutation.mutateAsync({
+      username: newUsername.toLowerCase(),
+    });
   };
 
   const handleSavePhysicalStats = () => {
@@ -431,6 +531,132 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
+
+        {user?.role === "trainer" && trainerProfile && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                <CardTitle>Trainer Profile</CardTitle>
+              </div>
+              <CardDescription>Manage your trainer profile and username</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  {!isEditingUsername ? (
+                    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-semibold" data-testid="text-trainer-username">
+                          {trainerProfile.username}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Clients can find you using this username
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEditUsername}
+                        data-testid="button-edit-username"
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 p-3 border rounded-lg">
+                      <div className="relative">
+                        <Input
+                          value={newUsername}
+                          onChange={(e) => handleUsernameChange(e.target.value)}
+                          placeholder="alexmartinez"
+                          data-testid="input-edit-username"
+                        />
+                        {usernameAvailability.checking && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!usernameAvailability.checking && usernameAvailability.available === true && (
+                          <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" data-testid="icon-username-available-edit" />
+                        )}
+                        {!usernameAvailability.checking && usernameAvailability.available === false && (
+                          <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-600" data-testid="icon-username-unavailable-edit" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Lowercase letters, numbers, and underscores only. Minimum 3 characters.
+                      </p>
+                      {usernameAvailability.message && (
+                        <p
+                          className={`text-sm ${
+                            usernameAvailability.available
+                              ? "text-green-600"
+                              : usernameAvailability.available === false
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                          }`}
+                          data-testid="text-username-status-edit"
+                        >
+                          {usernameAvailability.message}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCancelUsernameEdit}
+                          disabled={updateTrainerProfileMutation.isPending}
+                          data-testid="button-cancel-username-edit"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveUsername}
+                          disabled={
+                            updateTrainerProfileMutation.isPending ||
+                            (usernameAvailability.available !== true && newUsername.toLowerCase() !== trainerProfile.username?.toLowerCase())
+                          }
+                          data-testid="button-save-username-edit"
+                        >
+                          {updateTrainerProfileMutation.isPending && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label>Subscription Status</Label>
+                  <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                    {trainerProfile.subscriptionStatus === "premium" ? (
+                      <>
+                        <Crown className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <p className="font-semibold" data-testid="text-trainer-subscription">Premium</p>
+                          <p className="text-sm text-muted-foreground">Unlimited clients</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Briefcase className="h-5 w-5 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="font-semibold" data-testid="text-trainer-subscription">Free</p>
+                          <p className="text-sm text-muted-foreground">Up to 5 clients</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

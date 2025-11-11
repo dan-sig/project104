@@ -7,12 +7,17 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Check, X } from "lucide-react";
 import type { TrainerProfile } from "@shared/schema";
+import { usernameSchema, checkUsernameAvailability as checkAvailability, type UsernameAvailability } from "@/lib/usernameValidation";
+
+const usernameStepSchema = z.object({
+  username: usernameSchema,
+});
 
 const bioStepSchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters").max(500, "Bio must be less than 500 characters"),
@@ -30,14 +35,16 @@ const socialLinksStepSchema = z.object({
   linkedin: z.string().optional(),
 });
 
+type UsernameStepData = z.infer<typeof usernameStepSchema>;
 type BioStepData = z.infer<typeof bioStepSchema>;
 type ExpertiseStepData = z.infer<typeof expertiseStepSchema>;
 type SocialLinksStepData = z.infer<typeof socialLinksStepSchema>;
 
-function getInitialStep(status?: string): number {
-  if (!status || status === "pending") return 1;
-  if (status === "bio_complete") return 2;
-  if (status === "expertise_complete") return 3;
+function getInitialStep(status?: string, hasUsername?: boolean): number {
+  if (!hasUsername) return 1;
+  if (!status || status === "pending") return 2;
+  if (status === "bio_complete") return 3;
+  if (status === "expertise_complete") return 4;
   return 1;
 }
 
@@ -46,10 +53,22 @@ export default function TrainerOnboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>({ 
+    checking: false, 
+    available: null, 
+    message: "" 
+  });
 
   const { data: existingProfile, isLoading: isLoadingProfile } = useQuery<TrainerProfile>({
     queryKey: ["/api/trainer/profile"],
     retry: false,
+  });
+
+  const usernameForm = useForm<UsernameStepData>({
+    resolver: zodResolver(usernameStepSchema),
+    defaultValues: {
+      username: "",
+    },
   });
 
   const bioForm = useForm<BioStepData>({
@@ -79,6 +98,12 @@ export default function TrainerOnboarding() {
 
   useEffect(() => {
     if (existingProfile) {
+      if (existingProfile.username) {
+        usernameForm.reset({
+          username: existingProfile.username,
+        });
+      }
+
       if (existingProfile.bio) {
         bioForm.reset({
           bio: existingProfile.bio || "",
@@ -101,10 +126,21 @@ export default function TrainerOnboarding() {
         });
       }
 
-      const initialStep = getInitialStep(existingProfile.onboardingStatus);
+      const initialStep = getInitialStep(existingProfile.onboardingStatus, !!existingProfile.username);
       setCurrentStep(initialStep);
     }
-  }, [existingProfile, bioForm, expertiseForm, socialLinksForm]);
+  }, [existingProfile, usernameForm, bioForm, expertiseForm, socialLinksForm]);
+
+  const handleUsernameCheck = async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameAvailability({ checking: false, available: null, message: "" });
+      return;
+    }
+
+    setUsernameAvailability({ checking: true, available: null, message: "Checking availability..." });
+    const result = await checkAvailability(username);
+    setUsernameAvailability(result);
+  };
 
   const createProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -118,24 +154,53 @@ export default function TrainerOnboarding() {
     },
   });
 
-  const handleBioSubmit = async (data: BioStepData) => {
+  const handleUsernameSubmit = async (data: UsernameStepData) => {
+    if (usernameAvailability.available === false) {
+      toast({
+        title: "Username Unavailable",
+        description: "Please choose a different username.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (usernameAvailability.available !== true) {
+      await handleUsernameCheck(data.username);
+      return;
+    }
+
     try {
       if (existingProfile) {
         await updateProfileMutation.mutateAsync({
-          bio: data.bio,
-          yearsExperience: data.yearsExperience,
-          onboardingStatus: "bio_complete",
+          username: data.username.toLowerCase(),
         });
       } else {
         await createProfileMutation.mutateAsync({
-          bio: data.bio,
-          yearsExperience: data.yearsExperience,
-          onboardingStatus: "bio_complete",
+          username: data.username.toLowerCase(),
         });
       }
 
       await queryClient.invalidateQueries({ queryKey: ["/api/trainer/profile"] });
       setCurrentStep(2);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save username. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBioSubmit = async (data: BioStepData) => {
+    try {
+      await updateProfileMutation.mutateAsync({
+        bio: data.bio,
+        yearsExperience: data.yearsExperience,
+        onboardingStatus: "bio_complete",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/trainer/profile"] });
+      setCurrentStep(3);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -166,7 +231,7 @@ export default function TrainerOnboarding() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ["/api/trainer/profile"] });
-      setCurrentStep(3);
+      setCurrentStep(4);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -214,9 +279,10 @@ export default function TrainerOnboarding() {
   }
 
   const steps = [
-    { number: 1, title: "Bio & Experience", description: "Tell us about yourself" },
-    { number: 2, title: "Expertise", description: "Your specialties and certifications" },
-    { number: 3, title: "Social Links", description: "Connect your online presence (optional)" },
+    { number: 1, title: "Username", description: "Choose your unique trainer username" },
+    { number: 2, title: "Bio & Experience", description: "Tell us about yourself" },
+    { number: 3, title: "Expertise", description: "Your specialties and certifications" },
+    { number: 4, title: "Social Links", description: "Connect your online presence (optional)" },
   ];
 
   return (
@@ -265,6 +331,87 @@ export default function TrainerOnboarding() {
         {currentStep === 1 && (
           <Card data-testid="onboarding-step-1">
             <CardHeader>
+              <CardTitle>Choose Your Username</CardTitle>
+              <CardDescription>Your unique username allows clients to find and connect with you</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...usernameForm}>
+                <form onSubmit={usernameForm.handleSubmit(handleUsernameSubmit)} className="space-y-4">
+                  <FormField
+                    control={usernameForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              placeholder="alexmartinez"
+                              data-testid="input-username"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                const value = e.target.value;
+                                if (value && value.length >= 3) {
+                                  handleUsernameCheck(value);
+                                } else {
+                                  setUsernameAvailability({ checking: false, available: null, message: "" });
+                                }
+                              }}
+                            />
+                            {usernameAvailability.checking && (
+                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                            {!usernameAvailability.checking && usernameAvailability.available === true && (
+                              <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" data-testid="icon-username-available" />
+                            )}
+                            {!usernameAvailability.checking && usernameAvailability.available === false && (
+                              <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-600" data-testid="icon-username-unavailable" />
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Lowercase letters, numbers, and underscores only. Minimum 3 characters.
+                        </FormDescription>
+                        {usernameAvailability.message && (
+                          <p
+                            className={`text-sm ${
+                              usernameAvailability.available
+                                ? "text-green-600"
+                                : usernameAvailability.available === false
+                                ? "text-red-600"
+                                : "text-muted-foreground"
+                            }`}
+                            data-testid="text-username-status"
+                          >
+                            {usernameAvailability.message}
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={createProfileMutation.isPending || updateProfileMutation.isPending || usernameAvailability.available !== true}
+                    data-testid="button-next-step-1"
+                  >
+                    {(createProfileMutation.isPending || updateProfileMutation.isPending) && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Next: Bio & Experience
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 2 && (
+          <Card data-testid="onboarding-step-2">
+            <CardHeader>
               <CardTitle>Bio & Experience</CardTitle>
               <CardDescription>Share your background and expertise</CardDescription>
             </CardHeader>
@@ -311,25 +458,34 @@ export default function TrainerOnboarding() {
                     )}
                   />
 
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={createProfileMutation.isPending || updateProfileMutation.isPending}
-                    data-testid="button-next-step-1"
-                  >
-                    {(createProfileMutation.isPending || updateProfileMutation.isPending) && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Next: Expertise
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setCurrentStep(1)}
+                      className="flex-1"
+                      data-testid="button-back-step-2"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={updateProfileMutation.isPending}
+                      data-testid="button-next-step-2"
+                    >
+                      {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Next: Expertise
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>
           </Card>
         )}
 
-        {currentStep === 2 && (
-          <Card data-testid="onboarding-step-2">
+        {currentStep === 3 && (
+          <Card data-testid="onboarding-step-3">
             <CardHeader>
               <CardTitle>Expertise</CardTitle>
               <CardDescription>Your training specialties and certifications</CardDescription>
@@ -377,9 +533,9 @@ export default function TrainerOnboarding() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setCurrentStep(1)}
+                      onClick={() => setCurrentStep(2)}
                       className="flex-1"
-                      data-testid="button-back-step-2"
+                      data-testid="button-back-step-3"
                     >
                       Back
                     </Button>
@@ -387,7 +543,7 @@ export default function TrainerOnboarding() {
                       type="submit"
                       className="flex-1"
                       disabled={updateProfileMutation.isPending}
-                      data-testid="button-next-step-2"
+                      data-testid="button-next-step-3"
                     >
                       {updateProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Next: Social Links
@@ -399,8 +555,8 @@ export default function TrainerOnboarding() {
           </Card>
         )}
 
-        {currentStep === 3 && (
-          <Card data-testid="onboarding-step-3">
+        {currentStep === 4 && (
+          <Card data-testid="onboarding-step-4">
             <CardHeader>
               <CardTitle>Social Links (Optional)</CardTitle>
               <CardDescription>Connect your online presence to build credibility</CardDescription>
@@ -467,9 +623,9 @@ export default function TrainerOnboarding() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setCurrentStep(2)}
+                      onClick={() => setCurrentStep(3)}
                       className="flex-1"
-                      data-testid="button-back-step-3"
+                      data-testid="button-back-step-4"
                     >
                       Back
                     </Button>
