@@ -9,26 +9,24 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Users } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import type { TrainerClientRoster } from '@shared/schema';
-import { format } from 'date-fns';
+import { Search, Users, MessageCircle, AlertTriangle } from 'lucide-react';
+import { useMergedClientData } from '@/hooks/useMergedClientData';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export function TrainerRosterTable() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: clients, isLoading } = useQuery<TrainerClientRoster[]>({
-    queryKey: ["/api/trainer/clients"],
-  });
+  const { clients, isLoading } = useMergedClientData();
 
-  const filteredClients = clients?.filter(client => 
-    client.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.clientEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (client.programName && client.programName.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) || [];
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (client.currentProgram && client.currentProgram.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <Card>
@@ -40,7 +38,7 @@ export function TrainerRosterTable() {
               Client Roster
             </CardTitle>
             <CardDescription>
-              {clients ? `${clients.length} total client${clients.length !== 1 ? 's' : ''}` : 'Loading...'}
+              {clients.length} total client{clients.length !== 1 ? 's' : ''}
             </CardDescription>
           </div>
           <div className="relative w-80">
@@ -60,7 +58,7 @@ export function TrainerRosterTable() {
           <div className="text-center py-12 text-muted-foreground">
             Loading client roster...
           </div>
-        ) : !clients || clients.length === 0 ? (
+        ) : clients.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>No clients yet</p>
@@ -77,58 +75,98 @@ export function TrainerRosterTable() {
                 <TableRow>
                   <TableHead>Client</TableHead>
                   <TableHead>Program</TableHead>
-                  <TableHead>Purchase Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Your Earnings</TableHead>
+                  <TableHead>Last Workout</TableHead>
+                  <TableHead className="text-center">Alerts</TableHead>
+                  <TableHead className="text-center">Messages</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredClients.map((client) => (
                   <TableRow 
-                    key={client.clientId}
-                    data-testid={`row-client-${client.clientId}`}
+                    key={client.id}
+                    className="cursor-pointer hover-elevate"
+                    onClick={() => setLocation(`/trainer/client/${client.id}`)}
+                    data-testid={`row-client-${client.id}`}
                   >
                     <TableCell>
-                      <div>
-                        <div className="font-medium" data-testid={`text-client-name-${client.clientId}`}>
-                          {client.clientName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {client.clientEmail}
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            {client.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium" data-testid={`text-client-name-${client.id}`}>
+                            {client.name}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {client.email}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {client.programName || 'No program'}
+                        {client.currentProgram || 'No program'}
                       </div>
+                      {client.hasPurchase && (
+                        <div className="text-xs text-muted-foreground">
+                          Purchased {format(new Date(client.purchaseDate!), 'MMM d, yyyy')}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {format(new Date(client.purchaseDate), 'MMM d, yyyy')}
-                      </div>
+                      {client.lastWorkout ? (
+                        <div>
+                          <div className="text-sm font-medium">
+                            {formatDistanceToNow(new Date(client.lastWorkout), { addSuffix: true })}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(client.lastWorkout), 'MMM d, yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No workouts yet</span>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={client.subscriptionType === 'subscription' ? 'default' : 'secondary'}
-                        data-testid={`badge-subscription-${client.clientId}`}
-                      >
-                        {client.subscriptionType === 'subscription' ? 'Monthly' : 'One-time'}
-                      </Badge>
+                    <TableCell className="text-center">
+                      {client.alertsCount > 0 ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                          <Badge variant="destructive" data-testid={`badge-alerts-${client.id}`}>
+                            {client.alertsCount}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {client.unreadMessages > 0 ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <MessageCircle className="h-4 w-4 text-primary" />
+                          <Badge variant="default" data-testid={`badge-messages-${client.id}`}>
+                            {client.unreadMessages}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="font-medium">
-                        ${client.purchasePrice.toFixed(2)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="font-medium text-primary" data-testid={`text-earnings-${client.clientId}`}>
-                        ${client.trainerEarnings.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        (80%)
-                      </div>
+                      {client.hasPurchase ? (
+                        <div>
+                          <div className="font-medium text-primary" data-testid={`text-earnings-${client.id}`}>
+                            ${client.trainerEarnings?.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            of ${client.purchasePrice?.toFixed(2)}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No purchase</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

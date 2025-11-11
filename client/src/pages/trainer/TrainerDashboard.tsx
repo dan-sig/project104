@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { TrainerRosterTable } from "@/components/trainer/TrainerRosterTable";
 import { RevenueOverview } from "@/components/trainer/RevenueOverview";
@@ -8,11 +9,14 @@ import { ClientStats } from "@/components/trainer/ClientStats";
 import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
 import { InviteManager } from "@/components/trainer/InviteManager";
 import { useQuery } from "@tanstack/react-query";
+import { useMergedClientData } from "@/hooks/useMergedClientData";
 import type { User } from "@shared/schema";
+import { AlertTriangle, MessageCircle } from "lucide-react";
 
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("clients");
+  const { stats, isLoading: isLoadingClients } = useMergedClientData();
 
   // Get current user ID for custom exercises
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
@@ -44,22 +48,59 @@ export default function TrainerDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Revenue Stats */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Revenue Overview</h2>
-          <RevenueOverview />
-        </div>
-
-        {/* Client Stats */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Client Statistics</h2>
-          <ClientStats />
-        </div>
+        {/* Alert Summary Cards */}
+        {!isLoadingClients && (stats.totalAlerts > 0 || stats.totalUnreadMessages > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.totalAlerts > 0 && (
+              <Card className="bg-destructive/10 border-destructive/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid="text-total-alerts">
+                      {stats.totalAlerts} alert{stats.totalAlerts !== 1 ? 's' : ''} requiring attention
+                    </p>
+                    <p className="text-sm text-muted-foreground">Review client feedback and concerns</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab("clients")}
+                    data-testid="button-view-alerts"
+                  >
+                    View
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {stats.totalUnreadMessages > 0 && (
+              <Card className="bg-primary/10 border-primary/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <MessageCircle className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid="text-total-messages">
+                      {stats.totalUnreadMessages} unread message{stats.totalUnreadMessages !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Respond to your clients</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab("clients")}
+                    data-testid="button-view-messages"
+                  >
+                    View
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Main Content with Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList data-testid="tabs-trainer-dashboard">
             <TabsTrigger value="clients" data-testid="tab-clients">Client Roster</TabsTrigger>
+            <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
             <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
             <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
             <TabsTrigger value="invites" data-testid="tab-invites">Invite Links</TabsTrigger>
@@ -67,6 +108,17 @@ export default function TrainerDashboard() {
 
           <TabsContent value="clients" className="mt-6">
             <TrainerRosterTable />
+          </TabsContent>
+
+          <TabsContent value="revenue" className="mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Revenue Overview</h2>
+              <RevenueOverview />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Client Statistics</h2>
+              <ClientStats />
+            </div>
           </TabsContent>
 
           <TabsContent value="programs" className="mt-6">
