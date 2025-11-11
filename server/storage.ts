@@ -191,6 +191,7 @@ import {
   trainerClientInvites,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // ==========================================
 // DATABASE STORAGE IMPLEMENTATION
@@ -1114,16 +1115,98 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getTrainerInvites(trainerId: string): Promise<TrainerClientInvite[]> {
-    return db.select().from(trainerClientInvites)
+  async getTrainerInvites(trainerId: string): Promise<any[]> {
+    const trainerUser = alias(users, "trainerUser");
+    const clientUser = alias(users, "clientUser");
+    
+    const results = await db.select({
+      id: trainerClientInvites.id,
+      trainerId: trainerClientInvites.trainerId,
+      clientId: trainerClientInvites.clientId,
+      initiatorRole: trainerClientInvites.initiatorRole,
+      status: trainerClientInvites.status,
+      createdAt: trainerClientInvites.createdAt,
+      respondedAt: trainerClientInvites.respondedAt,
+      trainerName: sql<string>`CONCAT(${trainerUser.firstName}, ' ', ${trainerUser.lastName})`,
+      trainerEmail: trainerUser.email,
+      clientName: sql<string>`CONCAT(${clientUser.firstName}, ' ', ${clientUser.lastName})`,
+      clientEmail: clientUser.email,
+    })
+      .from(trainerClientInvites)
+      .leftJoin(trainerUser, eq(trainerClientInvites.trainerId, trainerUser.id))
+      .leftJoin(clientUser, eq(trainerClientInvites.clientId, clientUser.id))
       .where(eq(trainerClientInvites.trainerId, trainerId))
       .orderBy(desc(trainerClientInvites.createdAt));
+    
+    // Transform to structured format
+    return results.map(r => ({
+      id: r.id,
+      trainerId: r.trainerId,
+      clientId: r.clientId,
+      initiatorRole: r.initiatorRole,
+      status: r.status,
+      createdAt: r.createdAt,
+      respondedAt: r.respondedAt,
+      initiator: {
+        role: r.initiatorRole,
+        user: r.initiatorRole === "trainer" 
+          ? { id: r.trainerId, name: r.trainerName, email: r.trainerEmail }
+          : { id: r.clientId, name: r.clientName, email: r.clientEmail },
+      },
+      counterpart: {
+        role: r.initiatorRole === "trainer" ? "client" as const : "trainer" as const,
+        user: r.initiatorRole === "trainer"
+          ? { id: r.clientId, name: r.clientName, email: r.clientEmail }
+          : { id: r.trainerId, name: r.trainerName, email: r.trainerEmail },
+      },
+    }));
   }
 
-  async getClientInvites(clientId: string): Promise<TrainerClientInvite[]> {
-    return db.select().from(trainerClientInvites)
+  async getClientInvites(clientId: string): Promise<any[]> {
+    const trainerUser = alias(users, "trainerUser");
+    const clientUser = alias(users, "clientUser");
+    
+    const results = await db.select({
+      id: trainerClientInvites.id,
+      trainerId: trainerClientInvites.trainerId,
+      clientId: trainerClientInvites.clientId,
+      initiatorRole: trainerClientInvites.initiatorRole,
+      status: trainerClientInvites.status,
+      createdAt: trainerClientInvites.createdAt,
+      respondedAt: trainerClientInvites.respondedAt,
+      trainerName: sql<string>`CONCAT(${trainerUser.firstName}, ' ', ${trainerUser.lastName})`,
+      trainerEmail: trainerUser.email,
+      clientName: sql<string>`CONCAT(${clientUser.firstName}, ' ', ${clientUser.lastName})`,
+      clientEmail: clientUser.email,
+    })
+      .from(trainerClientInvites)
+      .leftJoin(trainerUser, eq(trainerClientInvites.trainerId, trainerUser.id))
+      .leftJoin(clientUser, eq(trainerClientInvites.clientId, clientUser.id))
       .where(eq(trainerClientInvites.clientId, clientId))
       .orderBy(desc(trainerClientInvites.createdAt));
+    
+    // Transform to structured format
+    return results.map(r => ({
+      id: r.id,
+      trainerId: r.trainerId,
+      clientId: r.clientId,
+      initiatorRole: r.initiatorRole,
+      status: r.status,
+      createdAt: r.createdAt,
+      respondedAt: r.respondedAt,
+      initiator: {
+        role: r.initiatorRole,
+        user: r.initiatorRole === "trainer" 
+          ? { id: r.trainerId, name: r.trainerName, email: r.trainerEmail }
+          : { id: r.clientId, name: r.clientName, email: r.clientEmail },
+      },
+      counterpart: {
+        role: r.initiatorRole === "trainer" ? "client" as const : "trainer" as const,
+        user: r.initiatorRole === "trainer"
+          ? { id: r.clientId, name: r.clientName, email: r.clientEmail }
+          : { id: r.trainerId, name: r.trainerName, email: r.trainerEmail },
+      },
+    }));
   }
 
   async getInviteById(inviteId: string): Promise<TrainerClientInvite | undefined> {

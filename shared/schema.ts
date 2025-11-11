@@ -558,6 +558,33 @@ export const insertTrainerClientInviteSchema = createInsertSchema(trainerClientI
 export type InsertTrainerClientInvite = z.infer<typeof insertTrainerClientInviteSchema>;
 export type TrainerClientInvite = typeof trainerClientInvites.$inferSelect;
 
+// Extended invite type with joined user data for API responses
+export interface TrainerClientInviteWithUsers {
+  id: string;
+  trainerId: string;
+  clientId: string;
+  initiatorRole: "trainer" | "client";
+  status: "pending" | "accepted" | "declined" | "canceled";
+  createdAt: Date | string;
+  respondedAt: Date | string | null;
+  initiator: {
+    role: "trainer" | "client";
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+  counterpart: {
+    role: "trainer" | "client";
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 // ==========================================
 // TRAINER DASHBOARD API RESPONSE TYPES
 // ==========================================

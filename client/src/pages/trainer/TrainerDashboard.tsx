@@ -8,6 +8,7 @@ import { RevenueOverview } from "@/components/trainer/RevenueOverview";
 import { ClientStats } from "@/components/trainer/ClientStats";
 import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
 import { InviteManager } from "@/components/trainer/InviteManager";
+import { TrainerInvitations } from "@/components/trainer/TrainerInvitations";
 import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
 import type { User, TrainerProfile } from "@shared/schema";
@@ -163,6 +164,7 @@ export default function TrainerDashboard() {
             <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
             <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
             <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
+            <TabsTrigger value="client-invitations" data-testid="tab-client-invitations">Client Invitations</TabsTrigger>
             <TabsTrigger value="invites" data-testid="tab-invites">Invite Links</TabsTrigger>
           </TabsList>
 
@@ -218,7 +220,24 @@ export default function TrainerDashboard() {
             )}
           </TabsContent>
 
+          <TabsContent value="client-invitations" className="mt-6">
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <strong>Client Invitations</strong> - Manage your direct client connections. 
+                Search for clients and send invitations to work together. 
+                Free accounts can have up to 5 active clients.
+              </p>
+            </div>
+            <TrainerInvitations />
+          </TabsContent>
+
           <TabsContent value="invites" className="mt-6">
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                <strong>Invite Links</strong> - Create shareable links for your training programs. 
+                Use these for marketing and program sales.
+              </p>
+            </div>
             <InviteManager />
           </TabsContent>
         </Tabs>
