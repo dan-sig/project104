@@ -15,6 +15,7 @@ export async function seedDatabase() {
     if (!existingProfile) {
       await storage.createTrainerProfile({
         userId: TRAINER_ID,
+        username: 'alexmartinez',
         bio: "Certified strength coach with 10+ years experience helping clients build sustainable fitness habits. Specializing in functional movement patterns and longevity-focused training.",
         yearsExperience: 10,
         certifications: ['NSCA-CPT', 'CSCS', 'FMS Level 2'],
@@ -23,7 +24,14 @@ export async function seedDatabase() {
           instagram: '@alexmartinez_fitness',
           website: 'https://alexmartinezfitness.com',
         },
+        subscriptionStatus: 'premium',
         onboardingStatus: 'completed',
+      });
+    } else if (!existingProfile.username) {
+      // Update existing profile to add username if it doesn't have one
+      await storage.updateTrainerProfile(TRAINER_ID, {
+        username: 'alexmartinez',
+        subscriptionStatus: 'premium',
       });
     }
 

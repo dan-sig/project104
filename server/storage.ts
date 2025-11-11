@@ -145,8 +145,13 @@ export interface IStorage {
   getTrainerSalesMetrics(trainerId: string): Promise<TrainerSalesMetrics>;
   
   getTrainerProfile(userId: string): Promise<TrainerProfile | undefined>;
+  getTrainerProfileByUsername(username: string): Promise<TrainerProfile | undefined>;
   createTrainerProfile(profile: InsertTrainerProfile): Promise<TrainerProfile>;
   updateTrainerProfile(userId: string, updates: Partial<TrainerProfile>): Promise<TrainerProfile | undefined>;
+  isUsernameTaken(username: string): Promise<boolean>;
+  getTrainerClientCount(trainerId: string): Promise<number>;
+  getTrainerClientConnection(trainerId: string, clientId: string): Promise<TrainerClient | undefined>;
+  getClientTrainerConnection(clientId: string): Promise<TrainerClient | undefined>;
   
   createTrainerInviteLink(invite: InsertTrainerInviteLink): Promise<TrainerInviteLink>;
   getTrainerInviteLinks(trainerId: string): Promise<TrainerInviteLink[]>;
@@ -958,6 +963,53 @@ export class DbStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(trainerProfiles.userId, userId))
       .returning();
+    return result[0];
+  }
+
+  async getTrainerProfileByUsername(username: string): Promise<TrainerProfile | undefined> {
+    const result = await db
+      .select()
+      .from(trainerProfiles)
+      .where(eq(sql`LOWER(${trainerProfiles.username})`, username.toLowerCase()))
+      .limit(1);
+    return result[0];
+  }
+
+  async isUsernameTaken(username: string): Promise<boolean> {
+    const result = await db
+      .select({ id: trainerProfiles.id })
+      .from(trainerProfiles)
+      .where(eq(sql`LOWER(${trainerProfiles.username})`, username.toLowerCase()))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async getTrainerClientCount(trainerId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(trainerClients)
+      .where(eq(trainerClients.trainerId, trainerId));
+    return result[0]?.count || 0;
+  }
+
+  async getTrainerClientConnection(trainerId: string, clientId: string): Promise<TrainerClient | undefined> {
+    const result = await db
+      .select()
+      .from(trainerClients)
+      .where(and(
+        eq(trainerClients.trainerId, trainerId),
+        eq(trainerClients.clientId, clientId)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async getClientTrainerConnection(clientId: string): Promise<TrainerClient | undefined> {
+    const result = await db
+      .select()
+      .from(trainerClients)
+      .where(eq(trainerClients.clientId, clientId))
+      .limit(1);
     return result[0];
   }
 

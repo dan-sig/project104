@@ -580,11 +580,13 @@ export type TrainerSalesMetrics = z.infer<typeof trainerSalesMetricsSchema>;
 export const trainerProfiles = pgTable("trainer_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().unique(),
+  username: varchar("username").notNull().unique(), // Unique trainer username for client discovery (e.g., "alexmartinez")
   bio: text("bio"),
   yearsExperience: integer("years_experience"),
   specialties: text("specialties").array().default(sql`array[]::text[]`),
   certifications: text("certifications").array().default(sql`array[]::text[]`),
   socialLinks: json("social_links").$type<{ instagram?: string; website?: string; linkedin?: string }>(),
+  subscriptionStatus: text("subscription_status").notNull().default("free"), // free | premium - Controls client limit (5 free, unlimited premium)
   onboardingStatus: text("onboarding_status").notNull().default("pending"), // pending | bio_complete | expertise_complete | completed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -595,6 +597,12 @@ export const insertTrainerProfileSchema = createInsertSchema(trainerProfiles).om
   createdAt: true,
   updatedAt: true,
 }).extend({
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username must be at most 30 characters")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
+    .transform(val => val.toLowerCase()), // Normalize to lowercase
+  subscriptionStatus: z.enum(["free", "premium"]).default("free"),
   onboardingStatus: z.enum(["pending", "bio_complete", "expertise_complete", "completed"]).default("pending"),
   socialLinks: z.object({
     instagram: z.string().optional(),

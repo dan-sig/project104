@@ -3727,6 +3727,41 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // GET /api/trainer/username/check?username=xxx - Check if username is available
+  app.get("/api/trainer/username/check", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { username } = req.query;
+      const { insertTrainerProfileSchema } = await import("@shared/schema");
+
+      if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: "Username is required" });
+      }
+
+      // Validate username format using schema validation
+      try {
+        insertTrainerProfileSchema.shape.username.parse(username);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          return res.json({ 
+            available: false, 
+            error: validationError.errors[0]?.message || "Invalid username format"
+          });
+        }
+      }
+
+      // Check if username is already taken
+      const isTaken = await storage.isUsernameTaken(username);
+      
+      res.json({ 
+        available: !isTaken,
+        username: username.toLowerCase() // Return normalized version
+      });
+    } catch (error) {
+      console.error("Error checking username availability:", error);
+      res.status(500).json({ error: "Failed to check username availability" });
+    }
+  });
+
   // POST /api/trainer/profile - Create trainer profile (onboarding)
   app.post("/api/trainer/profile", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -3772,6 +3807,107 @@ Provide a helpful, motivating response that addresses their question using this 
     } catch (error) {
       console.error("Error updating trainer profile:", error);
       res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // ==========================================
+  // CLIENT-TRAINER CONNECTION ROUTES
+  // ==========================================
+  // Endpoints for connecting clients to trainers via username
+
+  // POST /api/client/connect-trainer - Connect client to trainer by username
+  app.post("/api/client/connect-trainer", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const clientId = req.user.claims.sub;
+      const { username } = req.body;
+
+      if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: "Trainer username is required" });
+      }
+
+      // Find trainer by username
+      const trainerProfile = await storage.getTrainerProfileByUsername(username.toLowerCase());
+      if (!trainerProfile) {
+        return res.status(404).json({ error: "Trainer not found" });
+      }
+
+      // Check if client is already connected to this trainer
+      const existingConnection = await storage.getTrainerClientConnection(trainerProfile.userId, clientId);
+      if (existingConnection) {
+        return res.status(409).json({ error: "Already connected to this trainer" });
+      }
+
+      // Check trainer's client limit
+      const clientCount = await storage.getTrainerClientCount(trainerProfile.userId);
+      const isFreeTrainer = trainerProfile.subscriptionStatus !== 'premium';
+      const FREE_CLIENT_LIMIT = 5;
+
+      if (isFreeTrainer && clientCount >= FREE_CLIENT_LIMIT) {
+        return res.status(403).json({ 
+          error: "This trainer has reached their client limit",
+          limit: FREE_CLIENT_LIMIT,
+          upgradeRequired: true
+        });
+      }
+
+      // Create the connection
+      const { insertTrainerClientSchema } = await import("@shared/schema");
+      const connectionData = insertTrainerClientSchema.parse({
+        trainerId: trainerProfile.userId,
+        clientId,
+        sourcePurchaseId: null, // No purchase for username-based connections
+      });
+
+      const connection = await storage.createTrainerClient(connectionData);
+
+      // Fetch trainer details for response
+      const trainer = await storage.getUser(trainerProfile.userId);
+
+      res.status(201).json({
+        success: true,
+        connection,
+        trainer: {
+          id: trainer?.id,
+          name: [trainer?.firstName, trainer?.lastName].filter(Boolean).join(" ") || "Trainer",
+          username: trainerProfile.username,
+        },
+      });
+    } catch (error) {
+      console.error("Error connecting to trainer:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid connection data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to connect to trainer" });
+    }
+  });
+
+  // GET /api/client/trainer - Get client's connected trainer
+  app.get("/api/client/trainer", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const clientId = req.user.claims.sub;
+      const connection = await storage.getClientTrainerConnection(clientId);
+
+      if (!connection) {
+        return res.status(404).json({ error: "No trainer connected" });
+      }
+
+      // Fetch trainer details
+      const trainer = await storage.getUser(connection.trainerId);
+      const trainerProfile = await storage.getTrainerProfile(connection.trainerId);
+
+      res.json({
+        connection,
+        trainer: {
+          id: trainer?.id,
+          name: [trainer?.firstName, trainer?.lastName].filter(Boolean).join(" ") || "Trainer",
+          email: trainer?.email,
+          username: trainerProfile?.username,
+          profile: trainerProfile,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching trainer connection:", error);
+      res.status(500).json({ error: "Failed to fetch trainer connection" });
     }
   });
 
