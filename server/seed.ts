@@ -731,13 +731,13 @@ export async function seedDatabase() {
     // Create bidirectional trainer-client invitations
     console.log('[SEED] Creating sample invitations...');
     
-    const existingInvitations = await storage.getInvites(TRAINER_IDS.ALEX);
-    if (existingInvitations.sent.length > 0 || existingInvitations.received.length > 0) {
+    const existingTrainerInvitations = await storage.getTrainerInvites(TRAINER_IDS.ALEX);
+    if (existingTrainerInvitations.length > 0) {
       console.log(`[SEED] Invitations already exist, skipping creation`);
     } else {
       // Trainer-initiated invites (Alex inviting clients)
       // Alex → David (pending - waiting for David to accept)
-      await storage.createInvite({
+      await storage.createTrainerClientInvite({
         trainerId: TRAINER_IDS.ALEX,
         clientId: CLIENT_IDS.DAVID,
         initiatorRole: 'trainer',
@@ -746,7 +746,7 @@ export async function seedDatabase() {
 
       // Client-initiated invites (clients inviting trainers)
       // Sarah → Emma (pending - Sarah wants to work with Emma too)
-      await storage.createInvite({
+      await storage.createTrainerClientInvite({
         trainerId: TRAINER_IDS.EMMA,
         clientId: CLIENT_IDS.SARAH,
         initiatorRole: 'client',
@@ -754,7 +754,7 @@ export async function seedDatabase() {
       });
 
       // Mike → James (pending - Mike interested in running coaching)
-      await storage.createInvite({
+      await storage.createTrainerClientInvite({
         trainerId: TRAINER_IDS.JAMES,
         clientId: CLIENT_IDS.MIKE,
         initiatorRole: 'client',
@@ -762,7 +762,7 @@ export async function seedDatabase() {
       });
 
       // David → Alex (pending - showing both directions)
-      await storage.createInvite({
+      await storage.createTrainerClientInvite({
         trainerId: TRAINER_IDS.ALEX,
         clientId: CLIENT_IDS.DAVID,
         initiatorRole: 'client',
