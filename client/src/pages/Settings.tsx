@@ -110,6 +110,17 @@ export default function Settings() {
     retry: false,
   });
 
+  // Fetch client's coach connection (for clients only)
+  const { data: coachConnection, isLoading: isLoadingCoach } = useQuery<any>({
+    queryKey: ["/api/client/trainer"],
+    enabled: !!user && user?.role !== "trainer",
+    retry: false,
+  });
+
+  // Client coach state
+  const [searchUsername, setSearchUsername] = useState("");
+  const [searchError, setSearchError] = useState("");
+
   useEffect(() => {
     if (user) {
       setSelectedGoal(user.focusCycle || "move");
@@ -197,6 +208,50 @@ export default function Settings() {
     },
   });
 
+  const connectToCoachMutation = useMutation({
+    mutationFn: async (username: string) => {
+      return await apiRequest("POST", "/api/client/connect-trainer", { username });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/trainer"] });
+      setSearchUsername("");
+      setSearchError("");
+      toast({
+        title: "Success",
+        description: "Successfully connected to your coach!",
+      });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.error ?? error?.response?.data?.error ?? error?.message ?? "Failed to connect to trainer";
+      setSearchError(message);
+      toast({
+        title: "Connection Failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectFromCoachMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/client/trainer");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/trainer"] });
+      toast({
+        title: "Disconnected",
+        description: "You have been disconnected from your coach.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect from coach. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = () => {
     // Properly logout from Replit Auth session
     window.location.href = "/api/logout";
@@ -257,6 +312,19 @@ export default function Settings() {
     await updateTrainerProfileMutation.mutateAsync({
       username: newUsername.toLowerCase(),
     });
+  };
+
+  const handleConnectToCoach = () => {
+    if (!searchUsername.trim()) {
+      setSearchError("Please enter a trainer username");
+      return;
+    }
+    setSearchError("");
+    connectToCoachMutation.mutate(searchUsername.trim().toLowerCase());
+  };
+
+  const handleDisconnectFromCoach = () => {
+    disconnectFromCoachMutation.mutate();
   };
 
   const handleSavePhysicalStats = () => {
@@ -654,6 +722,140 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {user?.role !== "trainer" && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                <CardTitle>My Coach</CardTitle>
+              </div>
+              <CardDescription>Connect with your personal trainer</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingCoach ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : coachConnection ? (
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-semibold text-lg" data-testid="text-coach-name">
+                          {coachConnection.trainer?.name || "Your Coach"}
+                        </p>
+                        <p className="text-sm text-muted-foreground" data-testid="text-coach-username">
+                          @{coachConnection.trainer?.username}
+                        </p>
+                        {coachConnection.trainer?.email && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {coachConnection.trainer.email}
+                          </p>
+                        )}
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid="button-disconnect-coach"
+                          >
+                            Disconnect
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Disconnect from Coach?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to disconnect from {coachConnection.trainer?.name}? 
+                              You can reconnect later by searching for their username.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDisconnectFromCoach}
+                              data-testid="button-confirm-disconnect"
+                            >
+                              {disconnectFromCoachMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Disconnecting...
+                                </>
+                              ) : (
+                                "Disconnect"
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                  {coachConnection.trainer?.profile && (
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground mb-2">About Your Coach</p>
+                      {coachConnection.trainer.profile.yearsExperience && (
+                        <p>{coachConnection.trainer.profile.yearsExperience} years of experience</p>
+                      )}
+                      {coachConnection.trainer.profile.specialties && coachConnection.trainer.profile.specialties.length > 0 && (
+                        <p className="mt-1">Specialties: {coachConnection.trainer.profile.specialties.join(", ")}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Connect with a certified trainer to get personalized guidance and support.
+                  </p>
+                  <div className="space-y-3">
+                    <Label htmlFor="coach-username">Trainer Username</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="coach-username"
+                        value={searchUsername}
+                        onChange={(e) => {
+                          setSearchUsername(e.target.value);
+                          setSearchError("");
+                        }}
+                        placeholder="alexmartinez"
+                        data-testid="input-coach-username"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleConnectToCoach();
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={handleConnectToCoach}
+                        disabled={connectToCoachMutation.isPending || !searchUsername.trim()}
+                        data-testid="button-connect-coach"
+                      >
+                        {connectToCoachMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          "Connect"
+                        )}
+                      </Button>
+                    </div>
+                    {searchError && (
+                      <p className="text-sm text-red-600" data-testid="text-coach-error">
+                        {searchError}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Enter your trainer's username to connect. They'll appear in your network once connected.
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

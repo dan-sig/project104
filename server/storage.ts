@@ -143,6 +143,7 @@ export interface IStorage {
   getTrainerClients(trainerId: string): Promise<TrainerClient[]>;
   getTrainerClientsWithPrograms(trainerId: string): Promise<TrainerClientRoster[]>;
   getTrainerSalesMetrics(trainerId: string): Promise<TrainerSalesMetrics>;
+  deleteTrainerClient(connectionId: string): Promise<void>;
   
   getTrainerProfile(userId: string): Promise<TrainerProfile | undefined>;
   getTrainerProfileByUsername(username: string): Promise<TrainerProfile | undefined>;
@@ -814,7 +815,10 @@ export class DbStorage implements IStorage {
 
   async getTrainerClients(trainerId: string): Promise<TrainerClient[]> {
     return db.select().from(trainerClients)
-      .where(eq(trainerClients.trainerId, trainerId))
+      .where(and(
+        eq(trainerClients.trainerId, trainerId),
+        eq(trainerClients.status, "active")
+      ))
       .orderBy(desc(trainerClients.addedDate));
   }
 
@@ -839,7 +843,10 @@ export class DbStorage implements IStorage {
       .leftJoin(programPurchases, eq(trainerClients.sourcePurchaseId, programPurchases.id))
       .leftJoin(trainerPrograms, eq(programPurchases.trainerProgramId, trainerPrograms.id))
       .leftJoin(workoutPrograms, eq(programPurchases.workoutProgramId, workoutPrograms.id))
-      .where(eq(trainerClients.trainerId, trainerId))
+      .where(and(
+        eq(trainerClients.trainerId, trainerId),
+        eq(trainerClients.status, "active")
+      ))
       .orderBy(desc(trainerClients.addedDate));
 
     return results.map(r => ({
@@ -988,7 +995,10 @@ export class DbStorage implements IStorage {
     const result = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(trainerClients)
-      .where(eq(trainerClients.trainerId, trainerId));
+      .where(and(
+        eq(trainerClients.trainerId, trainerId),
+        eq(trainerClients.status, "active")
+      ));
     return result[0]?.count || 0;
   }
 
@@ -998,7 +1008,8 @@ export class DbStorage implements IStorage {
       .from(trainerClients)
       .where(and(
         eq(trainerClients.trainerId, trainerId),
-        eq(trainerClients.clientId, clientId)
+        eq(trainerClients.clientId, clientId),
+        eq(trainerClients.status, "active")
       ))
       .limit(1);
     return result[0];
@@ -1008,9 +1019,23 @@ export class DbStorage implements IStorage {
     const result = await db
       .select()
       .from(trainerClients)
-      .where(eq(trainerClients.clientId, clientId))
+      .where(and(
+        eq(trainerClients.clientId, clientId),
+        eq(trainerClients.status, "active")
+      ))
       .limit(1);
     return result[0];
+  }
+
+  async deleteTrainerClient(connectionId: string): Promise<void> {
+    // Soft delete: mark as disconnected instead of hard delete
+    await db
+      .update(trainerClients)
+      .set({
+        status: "disconnected",
+        disconnectedAt: new Date(),
+      })
+      .where(eq(trainerClients.id, connectionId));
   }
 
   // ==========================================

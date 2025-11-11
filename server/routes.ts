@@ -3911,6 +3911,28 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // DELETE /api/client/trainer - Disconnect from current trainer
+  app.delete("/api/client/trainer", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const clientId = req.user.claims.sub;
+      const connection = await storage.getClientTrainerConnection(clientId);
+
+      if (!connection) {
+        return res.status(404).json({ error: "No trainer connected" });
+      }
+
+      await storage.deleteTrainerClient(connection.id);
+
+      res.json({
+        success: true,
+        message: "Successfully disconnected from trainer",
+      });
+    } catch (error) {
+      console.error("Error disconnecting from trainer:", error);
+      res.status(500).json({ error: "Failed to disconnect from trainer" });
+    }
+  });
+
   // ==========================================
   // TRAINER INVITE LINK ROUTES
   // ==========================================
