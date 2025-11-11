@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,10 @@ import {
   Clock,
 } from "lucide-react";
 import { useProgramBuilder, type Workout, type WorkoutExercise } from "@/contexts/ProgramBuilderContext";
-import { computeWorkoutDuration, formatWorkoutDuration } from "@shared/workoutDuration";
+import { formatWorkoutDuration } from "@shared/workoutDuration";
+import { getPatternDisplayName, getPatternColor } from "@shared/movementPatternTracker";
+import { ProgramPatternTracker, WeekPatternGrid } from "./PatternTracking";
+import { useWorkoutDerivations } from "@/hooks/useWorkoutDerivations";
 
 interface WorkoutBuilderProps {
   onNext: () => void;
@@ -41,6 +44,15 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
   const [openWorkoutId, setOpenWorkoutId] = useState<string | null>(null);
   const [editingWorkout, setEditingWorkout] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Get unique week numbers for weekly pattern grids
+  const weekNumbers = useMemo(() => {
+    const weeks = new Set(state.workouts.map(w => w.weekNumber));
+    return Array.from(weeks).sort((a, b) => a - b);
+  }, [state.workouts]);
+  
+  // Pre-compute duration and patterns for all workouts using optimized hook
+  const workoutMetadataMap = useWorkoutDerivations(state.workouts, allExercises);
 
   const handleAddWorkout = () => {
     const newWorkout: Workout = {
@@ -112,8 +124,33 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
             </div>
           )}
 
+          {/* Program-Level Pattern Tracker */}
+          {state.workouts.length > 0 && (
+            <ProgramPatternTracker workouts={state.workouts} allExercises={allExercises} />
+          )}
+
+          {/* Week-Level Pattern Grids */}
+          {weekNumbers.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {weekNumbers.map((weekNum) => (
+                <WeekPatternGrid
+                  key={weekNum}
+                  weekNumber={weekNum}
+                  workouts={state.workouts}
+                  allExercises={allExercises}
+                />
+              ))}
+            </div>
+          )}
+
           <div className="space-y-4">
-            {state.workouts.map((workout, index) => (
+            {state.workouts.map((workout, index) => {
+              // Look up pre-computed metadata using Map for O(1) performance
+              const metadata = workoutMetadataMap.get(workout.id);
+              const workoutDuration = metadata?.duration || 0;
+              const workoutPatterns = metadata?.patterns || new Set();
+
+              return (
               <Collapsible
                 key={workout.id}
                 open={openWorkoutId === workout.id}
@@ -122,13 +159,37 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
                 <Card>
                   <CollapsibleTrigger className="w-full" data-testid={`button-workout-toggle-${index}`}>
                     <div className="flex items-center justify-between p-4 hover-elevate">
-                      <div className="flex items-center gap-3">
-                        <ChevronDown className="h-4 w-4" />
-                        <div className="text-left">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                        <div className="text-left flex-1 min-w-0">
                           <p className="font-semibold">{workout.workoutName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {workout.exercises.length} exercises • {workout.estimatedDuration} min
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap mt-1">
+                            <span className="text-sm text-muted-foreground">
+                              {workout.exercises.length} exercises
+                            </span>
+                            {workoutDuration > 0 && (
+                              <>
+                                <span className="text-muted-foreground">•</span>
+                                <Badge variant="outline" className="text-xs gap-1" data-testid={`badge-duration-${index}`}>
+                                  <Clock className="h-3 w-3" />
+                                  {formatWorkoutDuration(workoutDuration)}
+                                </Badge>
+                              </>
+                            )}
+                            {workoutPatterns.size > 0 && (
+                              <div className="flex gap-1 flex-wrap">
+                                {Array.from(workoutPatterns).map((pattern) => (
+                                  <Badge 
+                                    key={pattern}
+                                    className={`text-xs ${getPatternColor(pattern)} text-white`}
+                                    data-testid={`badge-pattern-${pattern}-${index}`}
+                                  >
+                                    {getPatternDisplayName(pattern)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -494,7 +555,8 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t">
