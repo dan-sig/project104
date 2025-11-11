@@ -183,19 +183,20 @@ export async function seedDatabase() {
     // Check if programs already exist
     const existingPrograms = await storage.getTrainerPrograms(TRAINER_ID);
     
+    let program1: any;
+    let program2: any;
+    let program3: any;
+    
     if (existingPrograms.length > 0) {
       console.log(`[SEED] Programs already exist (${existingPrograms.length} found), skipping program creation`);
-      console.log('[SEED] Database seed completed successfully!');
-      console.log('[SEED] Test trainer credentials:');
-      console.log('[SEED]   User ID: test-trainer-123');
-      console.log('[SEED]   Email: alex.trainer@morphit.dev');
-      console.log('[SEED]   Name: Alex Martinez');
-      console.log('[SEED] Navigate to /trainer to see the dashboard');
-      return;
-    }
+      // Use existing programs for purchases
+      program1 = existingPrograms.find(p => p.name === 'Upper Body Power Builder');
+      program2 = existingPrograms.find(p => p.name === 'Functional Movement Mastery');
+      program3 = existingPrograms.find(p => p.name === 'Beginner Strength Foundation');
+    } else {
     
     // Program 1: Upper Body Power
-    const program1 = await storage.createTrainerProgram({
+    program1 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
       name: 'Upper Body Power Builder',
       description: 'Build explosive upper body strength with compound movements and power training. Perfect for athletes and strength enthusiasts.',
@@ -299,7 +300,7 @@ export async function seedDatabase() {
     });
 
     // Program 2: Full Body Functional
-    const program2 = await storage.createTrainerProgram({
+    program2 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
       name: 'Functional Movement Mastery',
       description: 'Master all 10 functional movement patterns with science-backed programming. Includes rotation, carry, and anti-movement core work.',
@@ -469,7 +470,7 @@ export async function seedDatabase() {
     });
 
     // Program 3: Starter Strength
-    const program3 = await storage.createTrainerProgram({
+    program3 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
       name: 'Beginner Strength Foundation',
       description: 'Perfect for beginners looking to build a solid strength base. Simple, effective programming focused on the fundamentals.',
@@ -532,23 +533,29 @@ export async function seedDatabase() {
       targetRIR: 4,
       orderIndex: 2,
     });
+    }
 
     // Task 5: Populate sales data - create sample purchases and clients
     console.log('[SEED] Creating sample purchases and clients...');
 
-    const clients = [
-      { id: 'client-001', email: 'sarah.j@example.com', firstName: 'Sarah', lastName: 'Johnson' },
-      { id: 'client-002', email: 'mike.chen@example.com', firstName: 'Mike', lastName: 'Chen' },
-      { id: 'client-003', email: 'jessica.rodriguez@example.com', firstName: 'Jessica', lastName: 'Rodriguez' },
-    ];
+    // Check if purchases already exist
+    const existingClients = await storage.getTrainerClientsWithPrograms(TRAINER_ID);
+    if (existingClients.length > 0) {
+      console.log(`[SEED] Purchases and clients already exist (${existingClients.length} found), skipping creation`);
+    } else {
+      const clients = [
+        { id: 'client-001', email: 'sarah.j@example.com', firstName: 'Sarah', lastName: 'Johnson' },
+        { id: 'client-002', email: 'mike.chen@example.com', firstName: 'Mike', lastName: 'Chen' },
+        { id: 'client-003', email: 'jessica.rodriguez@example.com', firstName: 'Jessica', lastName: 'Rodriguez' },
+      ];
 
-    for (const client of clients) {
-      await storage.upsertUser(client);
-    }
+      for (const client of clients) {
+        await storage.upsertUser(client);
+      }
 
-    // Create purchases with proper fee calculations
+    // Create purchases with proper fee calculations and client relationships
     const purchase1Price = 49.99;
-    await storage.createProgramPurchase({
+    const purchase1 = await storage.createProgramPurchase({
       trainerProgramId: program1.id,
       trainerId: TRAINER_ID,
       buyerId: clients[0].id,
@@ -559,8 +566,14 @@ export async function seedDatabase() {
       status: 'completed',
     });
 
+    await storage.createTrainerClient({
+      trainerId: TRAINER_ID,
+      clientId: clients[0].id,
+      sourcePurchaseId: purchase1.id,
+    });
+
     const purchase2Price = 29.99;
-    await storage.createProgramPurchase({
+    const purchase2 = await storage.createProgramPurchase({
       trainerProgramId: program2.id,
       trainerId: TRAINER_ID,
       buyerId: clients[1].id,
@@ -571,7 +584,13 @@ export async function seedDatabase() {
       status: 'completed',
     });
 
-    await storage.createProgramPurchase({
+    await storage.createTrainerClient({
+      trainerId: TRAINER_ID,
+      clientId: clients[1].id,
+      sourcePurchaseId: purchase2.id,
+    });
+
+    const purchase3 = await storage.createProgramPurchase({
       trainerProgramId: program2.id,
       trainerId: TRAINER_ID,
       buyerId: clients[2].id,
@@ -582,8 +601,14 @@ export async function seedDatabase() {
       status: 'completed',
     });
 
+    await storage.createTrainerClient({
+      trainerId: TRAINER_ID,
+      clientId: clients[2].id,
+      sourcePurchaseId: purchase3.id,
+    });
+
     const purchase3Price = 19.99;
-    await storage.createProgramPurchase({
+    const purchase4 = await storage.createProgramPurchase({
       trainerProgramId: program3.id,
       trainerId: TRAINER_ID,
       buyerId: clients[0].id,
@@ -594,32 +619,40 @@ export async function seedDatabase() {
       status: 'completed',
     });
 
+      // Client 0 (Sarah) already added from purchase1, so skip duplicate client record
+    }
+
     // Task 6: Add active invite links
     console.log('[SEED] Creating invite links...');
     
-    await storage.createTrainerInviteLink({
-      trainerId: TRAINER_ID,
-      code: 'WELCOME2024',
-      maxUses: null, // Unlimited
-      expiresAt: null, // Never expires
-    });
+    const existingInvites = await storage.getTrainerInviteLinks(TRAINER_ID);
+    if (existingInvites.length > 0) {
+      console.log(`[SEED] Invite links already exist (${existingInvites.length} found), skipping creation`);
+    } else {
+      await storage.createTrainerInviteLink({
+        trainerId: TRAINER_ID,
+        code: 'WELCOME2024',
+        maxUses: null, // Unlimited
+        expiresAt: null, // Never expires
+      });
 
-    await storage.createTrainerInviteLink({
-      trainerId: TRAINER_ID,
-      code: 'LIMITED10',
-      maxUses: 10,
-      expiresAt: null,
-    });
+      await storage.createTrainerInviteLink({
+        trainerId: TRAINER_ID,
+        code: 'LIMITED10',
+        maxUses: 10,
+        expiresAt: null,
+      });
 
-    const oneWeekFromNow = new Date();
-    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-    
-    await storage.createTrainerInviteLink({
-      trainerId: TRAINER_ID,
-      code: 'FLASH7DAY',
-      maxUses: 50,
-      expiresAt: oneWeekFromNow,
-    });
+      const oneWeekFromNow = new Date();
+      oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+      
+      await storage.createTrainerInviteLink({
+        trainerId: TRAINER_ID,
+        code: 'FLASH7DAY',
+        maxUses: 50,
+        expiresAt: oneWeekFromNow,
+      });
+    }
 
     console.log('[SEED] Database seed completed successfully!');
     console.log('[SEED] Test trainer credentials:');
