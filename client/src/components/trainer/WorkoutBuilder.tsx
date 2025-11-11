@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,8 +26,10 @@ import {
   Edit,
   ArrowLeft,
   Search,
+  Clock,
 } from "lucide-react";
 import { useProgramBuilder, type Workout, type WorkoutExercise } from "@/contexts/ProgramBuilderContext";
+import { computeWorkoutDuration, formatWorkoutDuration } from "@shared/workoutDuration";
 
 interface WorkoutBuilderProps {
   onNext: () => void;
@@ -68,9 +71,9 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
       reps: "10",
       weight: null,
       tempo: "2-0-2-0",
-      rest: 90,
-      rpe: 7,
-      rir: 3,
+      restSeconds: 90,
+      targetRPE: 7,
+      targetRIR: 3,
       notes: null,
       orderIndex: workout.exercises.length,
     };
@@ -318,62 +321,129 @@ export default function WorkoutBuilder({ onNext, onBack }: WorkoutBuilderProps) 
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex-1 space-y-2">
                                     <p className="font-medium text-sm">{exercise.exerciseName}</p>
-                                    <div className="grid grid-cols-3 gap-2 text-xs">
-                                      <div>
-                                        <Label className="text-xs">Sets</Label>
-                                        <Input
-                                          type="number"
-                                          value={exercise.sets}
-                                          onChange={(e) =>
-                                            dispatch({
-                                              type: "UPDATE_EXERCISE",
-                                              payload: {
-                                                workoutId: workout.id,
-                                                exerciseId: exercise.id,
-                                                updates: { sets: parseInt(e.target.value) },
-                                              },
-                                            })
-                                          }
-                                          className="h-8"
-                                          data-testid={`input-sets-${exIndex}`}
-                                        />
+                                    <div className="space-y-2">
+                                      <div className="grid grid-cols-3 gap-2 text-xs">
+                                        <div>
+                                          <Label className="text-xs">Sets</Label>
+                                          <Input
+                                            type="number"
+                                            value={exercise.sets}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { sets: parseInt(e.target.value) },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            data-testid={`input-sets-${exIndex}`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">Reps</Label>
+                                          <Input
+                                            value={exercise.reps}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { reps: e.target.value },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            data-testid={`input-reps-${exIndex}`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">Rest (s)</Label>
+                                          <Input
+                                            type="number"
+                                            value={exercise.restSeconds}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { restSeconds: parseInt(e.target.value) },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            data-testid={`input-rest-${exIndex}`}
+                                          />
+                                        </div>
                                       </div>
-                                      <div>
-                                        <Label className="text-xs">Reps</Label>
-                                        <Input
-                                          value={exercise.reps}
-                                          onChange={(e) =>
-                                            dispatch({
-                                              type: "UPDATE_EXERCISE",
-                                              payload: {
-                                                workoutId: workout.id,
-                                                exerciseId: exercise.id,
-                                                updates: { reps: e.target.value },
-                                              },
-                                            })
-                                          }
-                                          className="h-8"
-                                          data-testid={`input-reps-${exIndex}`}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label className="text-xs">Rest (s)</Label>
-                                        <Input
-                                          type="number"
-                                          value={exercise.rest}
-                                          onChange={(e) =>
-                                            dispatch({
-                                              type: "UPDATE_EXERCISE",
-                                              payload: {
-                                                workoutId: workout.id,
-                                                exerciseId: exercise.id,
-                                                updates: { rest: parseInt(e.target.value) },
-                                              },
-                                            })
-                                          }
-                                          className="h-8"
-                                          data-testid={`input-rest-${exIndex}`}
-                                        />
+                                      <div className="grid grid-cols-3 gap-2 text-xs">
+                                        <div>
+                                          <Label className="text-xs">RPE (1-10)</Label>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            max="10"
+                                            value={exercise.targetRPE ?? ""}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { targetRPE: e.target.value ? parseInt(e.target.value) : null },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            placeholder="Optional"
+                                            data-testid={`input-rpe-${exIndex}`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">RIR (0-5)</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="5"
+                                            value={exercise.targetRIR ?? ""}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { targetRIR: e.target.value ? parseInt(e.target.value) : null },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            placeholder="Optional"
+                                            data-testid={`input-rir-${exIndex}`}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs">Tempo</Label>
+                                          <Input
+                                            value={exercise.tempo ?? ""}
+                                            onChange={(e) =>
+                                              dispatch({
+                                                type: "UPDATE_EXERCISE",
+                                                payload: {
+                                                  workoutId: workout.id,
+                                                  exerciseId: exercise.id,
+                                                  updates: { tempo: e.target.value || null },
+                                                },
+                                              })
+                                            }
+                                            className="h-8"
+                                            placeholder="e.g. 3-1-2-0"
+                                            data-testid={`input-tempo-${exIndex}`}
+                                          />
+                                        </div>
                                       </div>
                                     </div>
                                   </div>

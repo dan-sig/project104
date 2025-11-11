@@ -37,10 +37,12 @@ export function parseTempoToSeconds(tempo: string | null | undefined): number {
  */
 export interface ExerciseForDuration {
   sets: number;
-  reps: number;
-  restTime: number; // in seconds
+  repsMin?: number | null; // For rep ranges
+  repsMax?: number | null; // For rep ranges
+  reps?: number | null; // For fixed reps
+  restSeconds: number | null; // in seconds
   tempo: string | null | undefined;
-  equipmentType?: string | null;
+  equipment?: string | null;
 }
 
 /**
@@ -62,22 +64,35 @@ export function computeWorkoutDuration(
   let previousEquipment: string | null | undefined = null;
 
   for (const exercise of exercises) {
+    // Determine rep count (use average for rep ranges, or fixed reps)
+    let repsPerSet: number;
+    if (exercise.repsMin !== null && exercise.repsMin !== undefined && 
+        exercise.repsMax !== null && exercise.repsMax !== undefined) {
+      repsPerSet = (exercise.repsMin + exercise.repsMax) / 2;
+    } else if (exercise.reps !== null && exercise.reps !== undefined) {
+      repsPerSet = exercise.reps;
+    } else {
+      // Default to 10 reps if not specified
+      repsPerSet = 10;
+    }
+    
     // Calculate time under tension
     const tempoSeconds = parseTempoToSeconds(exercise.tempo);
-    const timeUnderTension = exercise.sets * exercise.reps * tempoSeconds;
+    const timeUnderTension = exercise.sets * repsPerSet * tempoSeconds;
     
     // Calculate rest time (rest between sets, not after last set)
-    const totalRestTime = (exercise.sets - 1) * exercise.restTime;
+    const restTime = exercise.restSeconds ?? 60; // Default 60 seconds if not specified
+    const totalRestTime = Math.max(0, (exercise.sets - 1) * restTime);
     
     // Add to total
     totalSeconds += timeUnderTension + totalRestTime;
     
     // Add equipment transition time if equipment changes
-    if (previousEquipment !== null && exercise.equipmentType !== previousEquipment) {
+    if (previousEquipment !== null && exercise.equipment !== previousEquipment) {
       totalSeconds += transitionTime;
     }
     
-    previousEquipment = exercise.equipmentType;
+    previousEquipment = exercise.equipment;
   }
 
   return totalSeconds;

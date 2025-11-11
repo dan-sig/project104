@@ -40,9 +40,9 @@ interface WorkoutExercise {
   reps: string;
   weight: number | null;
   tempo: string | null;
-  rest: number;
-  rpe: number | null;
-  rir: number | null;
+  restSeconds: number;
+  targetRPE: number | null;
+  targetRIR: number | null;
   notes: string | null;
   orderIndex: number;
 }

@@ -3947,19 +3947,9 @@ Provide a helpful, motivating response that addresses their question using this 
         // Get and clone exercises for this workout
         const trainerExercises = await storage.getWorkoutExercisesForTrainer(trainerWorkout.id);
         for (const trainerExercise of trainerExercises) {
-          // Parse reps string to get min/max (e.g., "8-12" -> min:8, max:12)
-          let repsMin = trainerExercise.sets;
-          let repsMax = trainerExercise.sets;
-          if (trainerExercise.reps) {
-            const repsParts = trainerExercise.reps.split("-");
-            if (repsParts.length === 2) {
-              repsMin = parseInt(repsParts[0]) || repsMin;
-              repsMax = parseInt(repsParts[1]) || repsMax;
-            } else {
-              repsMin = parseInt(trainerExercise.reps) || repsMin;
-              repsMax = repsMin;
-            }
-          }
+          // Use repsMin/repsMax from schema (default to 8-12 if not set)
+          const repsMin = trainerExercise.repsMin ?? 8;
+          const repsMax = trainerExercise.repsMax ?? 12;
 
           await storage.createProgramExercise({
             workoutId: programWorkout.id,
@@ -3967,10 +3957,10 @@ Provide a helpful, motivating response that addresses their question using this 
             sets: trainerExercise.sets,
             repsMin,
             repsMax,
-            restSeconds: trainerExercise.rest || 60,
+            restSeconds: trainerExercise.restSeconds || 60,
             tempo: trainerExercise.tempo,
-            targetRPE: trainerExercise.rpe,
-            targetRIR: trainerExercise.rir,
+            targetRPE: trainerExercise.targetRPE,
+            targetRIR: trainerExercise.targetRIR,
             notes: trainerExercise.notes,
             orderIndex: trainerExercise.orderIndex,
           });
