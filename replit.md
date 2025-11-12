@@ -7,6 +7,17 @@ Morphit is a science-backed fitness application that generates personalized work
 - Preferred communication style: Simple, everyday language.
 - Testing preference: Only use browser-based testing when absolutely necessary (UI/UX validation, multi-page workflows, JavaScript-dependent features). Prefer faster methods like API testing, database queries, log inspection, and LSP diagnostics for backend/schema changes.
 
+## Recent Changes
+
+### November 12, 2025 - Trainer Workflow API Migration Complete
+- **Replaced TrainerDataContext with React Query**: All trainer components (ClientDetail, ClientProfile, ClientProgress, ClientWorkoutSessions) now fetch real data from API endpoints instead of mock context
+- **Fixed Critical API Bug**: Corrected storage.getActiveProgram → storage.getUserActiveProgram in routes.ts GET /api/trainer/clients/:id endpoint
+- **Added Missing Endpoint**: Implemented GET /api/workout-sessions/:sessionId with client/trainer authorization for fetching individual session details (required for trainer notes persistence)
+- **Fixed Client ID Routing**: Updated useMergedClientData hook to use real client IDs (user-sarah-001, etc.) instead of mock IDs (client-1, etc.) by matching emails and overriding mock IDs
+- **Updated Mock Data**: Aligned mock client emails with seed data (sarah.johnson@example.com, mike.chen@example.com, jessica.rodriguez@example.com) to enable proper ID mapping
+- **Added Defensive Defaults**: ClientDetail now provides fallback values for null/undefined profile fields (fitnessLevel, equipmentAccess, etc.) preventing render crashes
+- **End-to-End Verification**: Trainer workflow tested successfully - roster navigation, client details, all tabs, trainer notes persistence all working with real APIs
+
 ## System Architecture
 
 ### UI/UX Decisions
