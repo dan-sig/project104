@@ -76,6 +76,7 @@ export const users = pgTable("users", {
   totalWorkoutsCompleted: integer("total_workouts_completed").default(0),  // NEW: Total workouts completed across all cycles
   fitnessLevel: text("fitness_level"),
   isDiscoverable: boolean("is_discoverable").notNull().default(true), // Privacy: Allow trainers to search and find this user
+  hasSeenWelcomePrompt: boolean("has_seen_welcome_prompt").notNull().default(false), // First-time user experience: shows welcome banner on first login
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -549,11 +550,13 @@ export type TrainerClient = typeof trainerClients.$inferSelect;
 // ==========================================
 
 // TABLE: supportRequests
-// Support tickets submitted by trainers to developers
+// Support tickets submitted by trainers or users to developers
 export const supportRequests = pgTable("support_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trainerId: varchar("trainer_id").notNull(), // User ID of requesting trainer
-  category: text("category").notNull(), // technical_issue | billing | feature_request | general_question
+  trainerId: varchar("trainer_id"), // User ID of requesting trainer (nullable - either trainerId or userId must be set)
+  userId: varchar("user_id"), // User ID of requesting user (nullable - either trainerId or userId must be set)
+  tier: text("tier").notNull(), // free | premium - auto-tagged from user's subscription tier for prioritization
+  category: text("category").notNull(), // technical_issue | billing | program_question | general_question
   subject: text("subject").notNull(),
   message: text("message").notNull(),
   status: text("status").notNull().default("open"), // open | in_progress | resolved | closed
@@ -563,11 +566,12 @@ export const supportRequests = pgTable("support_requests", {
 
 export const insertSupportRequestSchema = createInsertSchema(supportRequests).omit({
   id: true,
+  tier: true, // Auto-tagged by backend based on user's subscription
   status: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
-  category: z.enum(["technical_issue", "billing", "feature_request", "general_question"]),
+  category: z.enum(["technical_issue", "billing", "program_question", "general_question"]),
 });
 
 export type InsertSupportRequest = z.infer<typeof insertSupportRequestSchema>;

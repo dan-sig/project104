@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Dumbbell, Calendar, TrendingUp, History, Play, Flame, MessageSquare, Target, UserPlus, Sparkles } from "lucide-react";
+import { Dumbbell, Calendar, TrendingUp, History, Play, Flame, MessageSquare, Target, UserPlus, Sparkles, Settings as SettingsIcon } from "lucide-react";
 import { format } from "date-fns";
 import ThemeToggle from "./ThemeToggle";
 import { getDailyQuote } from "@shared/motivationalQuotes";
@@ -31,6 +32,8 @@ export default function Dashboard({
   onViewHistory,
   onViewProgress,
 }: DashboardProps) {
+  const [, setLocation] = useLocation();
+  
   const { data: activeProgram, isLoading: isLoadingProgram } = useQuery<WorkoutProgram>({
     queryKey: ['/api/programs/active'],
   });
@@ -97,7 +100,17 @@ export default function Dashboard({
               <Dumbbell className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold">Morphit</h1>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setLocation('/settings')}
+                data-testid="button-settings"
+              >
+                <SettingsIcon className="h-5 w-5" />
+              </Button>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
@@ -133,7 +146,17 @@ export default function Dashboard({
             <Dumbbell className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">Morphit</h1>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setLocation('/settings')}
+              data-testid="button-settings"
+            >
+              <SettingsIcon className="h-5 w-5" />
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

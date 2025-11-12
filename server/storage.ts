@@ -215,6 +215,9 @@ export interface IStorage {
     daysRemaining: number | null;
     programName: string | null;
   }>;
+  
+  createUserSupportRequest(userId: string, request: Omit<InsertSupportRequest, 'userId' | 'trainerId'>): Promise<any>;
+  getUserSupportRequests(userId: string): Promise<any[]>;
 }
 
 
@@ -1796,6 +1799,37 @@ export class DbStorage implements IStorage {
       daysRemaining: Math.max(0, daysRemaining),
       programName: activeProgram.programType,
     };
+  }
+
+  // ==========================================
+  // USER SUPPORT OPERATIONS
+  // ==========================================
+  
+  async createUserSupportRequest(
+    userId: string,
+    request: Omit<InsertSupportRequest, 'userId' | 'trainerId'>
+  ): Promise<SupportRequest> {
+    // Get user's subscription tier for auto-tagging
+    const user = await db.select({ subscriptionTier: users.subscriptionTier })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    const tier = user[0]?.subscriptionTier || 'free';
+    
+    const result = await db.insert(supportRequests).values({
+      ...request,
+      userId,
+      tier,
+    }).returning();
+    
+    return result[0];
+  }
+
+  async getUserSupportRequests(userId: string): Promise<SupportRequest[]> {
+    return db.select().from(supportRequests)
+      .where(eq(supportRequests.userId, userId))
+      .orderBy(desc(supportRequests.createdAt));
   }
 }
 

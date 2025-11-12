@@ -1,13 +1,47 @@
 # Morphit - Personal Fitness Program Application
 
 ## Overview
-Morphit is a science-backed fitness application that generates personalized workout programs based on CNS-ordered programming (warmup → power → compounds → isolations → core → cardio). It trains 10 functional movement patterns with adaptive difficulty and offers various split/duration options. Key features include intelligent equipment-based exercise swapping, Zone 2 and HIIT cardio, fitness assessments for advanced movements, and a flexible 7-day cycle system with automatic missed workout rescheduling. It also integrates AI-enhanced insights, including a prompt-based onboarding system for intuitive program generation, and supports a trainer marketplace for program creation and sales. Morphit aims to provide longevity-focused, adaptive training, supporting users in reaching fitness goals through intelligent, progressive programming across its four core cycles: Flow, Build, Strong, and Move.
+Morphit is a science-backed fitness application designed to generate personalized workout programs based on CNS-ordered programming principles. It supports 10 functional movement patterns with adaptive difficulty, offering various split and duration options. Key features include intelligent equipment-based exercise swapping, Zone 2 and HIIT cardio, fitness assessments for advanced movements, and a flexible 7-day cycle system with automatic missed workout rescheduling. The platform integrates AI-enhanced insights, including a prompt-based onboarding system for intuitive program generation, and supports a trainer marketplace for program creation and sales. Morphit aims to provide longevity-focused, adaptive training, guiding users through four core cycles: Flow, Build, Strong, and Move, to achieve their fitness goals through intelligent, progressive programming.
 
 ## User Preferences
 - Preferred communication style: Simple, everyday language.
 - Testing preference: Only use browser-based testing when absolutely necessary (UI/UX validation, multi-page workflows, JavaScript-dependent features). Prefer faster methods like API testing, database queries, log inspection, and LSP diagnostics for backend/schema changes.
 
 ## Recent Changes
+
+### November 12, 2025 - User Support System & Settings Page
+- **Comprehensive User Settings Page**: Created UserSettings page (route: /settings) with 5 tabs mirroring trainer settings structure:
+  - **Profile**: Displays current Morphit cycle, 4-week microcycle phase, equipment list, weekly schedule with "Edit Training Preferences" button linking to /settings/program
+  - **Subscription**: Free vs Premium tier comparison showing current tier, feature differences, upgrade CTA
+  - **Support**: Request form using useForm + zodResolver with category dropdown (Technical Issue, Billing, Program Question, General Question), displays all past support requests with timestamps/statuses
+  - **FAQ**: 6 collapsible questions explaining 4 Morphit cycles (Flow, Build, Strong, Move), 4-week microcycle progression (Learn, Load, Push, Deload), equipment swapping, cardio, streak tracking, and trainer connections
+  - **Getting Started**: 4-step guide for new users (complete fitness assessment, set program preferences, start first workout, explore body metrics tracking)
+- **Database Enhancements**: Added hasSeenWelcomePrompt field to users table for first-time user experience tracking
+- **Support Request System for Users**: Extended support_requests table and API to support both users and trainers:
+  - Added userId field (nullable), tier field (auto-populated from user's subscriptionTier for prioritization)
+  - Storage methods: createUserSupportRequest (auto-tags tier), getUserSupportRequests
+  - API endpoints: POST /api/support-requests, GET /api/support-requests
+  - Validation using supportFormSchema with Zod enum matching backend (technical_issue, billing, program_question, general_question)
+- **Routing Architecture**: Reorganized settings routes for clarity:
+  - /settings → UserSettings (main user profile, subscription, support, FAQ)
+  - /settings/program → Settings (training/program configuration, formerly at /settings)
+  - Dashboard header includes Settings icon button for easy navigation
+- **Architecture Quality**: All forms use useForm + zodResolver, no nested Cards, comprehensive data-testid attributes for testing
+
+### November 12, 2025 - User Alert System & Motivational Quotes
+- **Real-Time User Alert System**: Created comprehensive alert dashboard accessible from user Dashboard:
+  - **Workout Streak**: Tracks consecutive days with completed workouts (green border, Flame icon)
+  - **Trainer Notes**: Shows count of unread trainer notes for pre-session guidance and post-session reviews (blue border, MessageSquare icon)
+  - **Program Status**: Displays active program status with days remaining, alerts when program ends soon (purple border, Target icon)
+  - **Pending Invites**: Indicates number of pending trainer invitations awaiting response (blue border, UserPlus icon)
+  - Backend: userAlerts storage method calculates workout streak, counts unread trainer notes, checks active program status, fetches pending invites
+  - API endpoint: GET /api/user-alerts returns all alert data in single response
+  - UI: Grid of 4 alert cards on Dashboard, each with icon, title, description, count badge, and "View" action button
+- **Daily Motivational Quote System**: Implemented curated quote rotation using day-of-year modulo:
+  - Created shared/motivationalQuotes.ts with 100+ fitness/longevity quotes (no emojis per user preference)
+  - getDailyQuote() function uses deterministic day-of-year calculation for consistent daily rotation
+  - Dashboard displays daily quote in gradient card with Sparkles icon
+  - Quotes focus on consistency, progress, longevity, mental health benefits of fitness
 
 ### November 12, 2025 - Real-Time Trainer Alert System
 - **Complete Mock Data Removal**: Eliminated all mock client data (deleted trainerMockData.ts, removed TrainerDataContext.tsx references from ExerciseEditorDrawer and WorkoutDetail)
@@ -50,38 +84,35 @@ Morphit is a science-backed fitness application that generates personalized work
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend uses React 18 with TypeScript, Vite, Wouter for routing, and React Query for server state management. UI components are built with Shadcn/ui and Radix UI, styled with Tailwind CSS, featuring a custom Material Design-inspired theme with light/dark modes. Core views include Home, Workout, History, Body Metrics, Settings, and Progress visualization. Marketing pages (Landing, About, How It Works, Science) communicate the adaptive training approach and Morphit's 4 cycles.
+The frontend uses React 18 with TypeScript, Vite, Wouter for routing, and React Query for server state management. UI components are built with Shadcn/ui and Radix UI, styled with Tailwind CSS, featuring a custom Material Design-inspired theme with light/dark modes. Core user views include Home, Workout, History, Body Metrics, Settings, and Progress visualization. Marketing pages communicate the adaptive training approach and Morphit's 4 cycles. The system supports a comprehensive user settings page and a consolidated trainer dashboard for streamlined navigation.
 
 ### Technical Implementations
-The backend is an Express.js server developed with TypeScript, handling JSON requests/responses with CORS. It integrates with Vite and uses Replit Auth (OpenID Connect) via Passport.js for authentication. PostgreSQL is the primary database, accessed via Drizzle ORM. Performance optimizations include database-level query optimization and paginated API endpoints. Timezone-safe date handling uses YYYY-MM-DD strings for calendar dates. The system supports both legacy day-of-week and new date-based scheduling. AI Conversational Program Generation uses a confirmation flow, leveraging existing profile settings and offering optional fitness assessments. A 4-Week Microcycle System defines progression (Learn, Load, Push, Deload) with week-specific parameters for each Focus Cycle (Flow, Build, Strong, Move). The Workout Duration Calculator provides real-time estimates based on tempo, reps, rest, and equipment transitions. A Movement Pattern Tracking System tracks 10 functional movement patterns at workout, week, and program levels.
-
-**Development Testing Infrastructure**: A development-only authentication bypass (server/replitAuth.ts) injects a fake test user session (test-trainer-123) when NODE_ENV=development, allowing immediate testing without login flow. Production deployments remain unaffected as the bypass is gated by environment check.
-
-**Database Seeding System**: An idempotent seed script (server/seed.ts) auto-runs on server startup in development mode, populating realistic trainer profile (Alex Martinez, 10 years experience), 10 custom exercises covering all 10 movement patterns (horizontal_push, vertical_push, horizontal_pull, vertical_pull, squat, lunge, hinge, core, rotation, carry), 3 training programs with workouts, sample purchases/clients, and active invite links. The seed checks for existing data before creation, preventing duplicates on server restarts.
+The backend is an Express.js server developed with TypeScript, handling JSON requests/responses with CORS. Authentication is managed via Replit Auth (OpenID Connect) using Passport.js. PostgreSQL serves as the primary database, accessed through Drizzle ORM. Performance is optimized with database-level query optimization and paginated API endpoints. Date handling uses YYYY-MM-DD strings for timezone safety, supporting both legacy day-of-week and date-based scheduling. AI Conversational Program Generation uses a confirmation flow, leveraging profile settings and offering optional fitness assessments. A 4-Week Microcycle System defines progression (Learn, Load, Push, Deload) within each Focus Cycle (Flow, Build, Strong, Move). A Workout Duration Calculator provides real-time estimates. A Movement Pattern Tracking System monitors 10 functional movement patterns.
+For development, an authentication bypass injects a fake test user session when `NODE_ENV=development`. An idempotent seed script auto-runs in development mode, populating realistic trainer profiles, custom exercises, programs, clients, and invite links.
 
 ### Feature Specifications
-- **Data Model**: Includes Users, Fitness Assessments, Exercise Database, Workout Programs, and Performance Tracking, with pre-generated workout sessions.
-- **AI-Powered Onboarding**: Uses natural language prompts with OpenAI structured outputs to parse fitness goals, schedule, and equipment, recommending assessments based on experience.
-- **Comprehensive Fitness Assessment System**: Offers Bodyweight/Weights Tests or skip option, mapping data to 10 movement patterns.
-- **Template-Based Adaptive Training**: Algorithms select from prebuilt templates (Strength Primary, Cardio Primary, Hybrid Balance) for custom 8-week programs.
-- **Science-Based Weekly Workout Structure**: Workouts have specific focuses (squat, push, hinge, pull, athletic, unilateral) determining exercise/power selection and warmups.
-- **Goal-Based Programming**: Implements mixed strength/hypertrophy training with parameters determined by exercise type and training goal, adjusting for experience.
-- **CNS-Ordered Workout Progression**: Follows a hierarchy: warmup → power → compounds → isolations → core → cardio.
-- **Superset & Time Allocation**: Aggressive superset programming for shorter workouts and percentage-based time allocation system based on nutrition goal and duration.
-- **Time-Based Fallback System**: Ensures target workout duration by adding exercises when needed.
-- **Calendar-Aligned Sessions**: Programs start on the user's current day, aligning with calendar dates.
-- **Smart Exercise Reuse & Progressive Overload**: Implements hierarchical reuse rules and automatically adjusts exercise difficulty.
+- **Data Model**: Includes Users, Fitness Assessments, Exercise Database, Workout Programs, and Performance Tracking.
+- **AI-Powered Onboarding**: Uses natural language prompts with OpenAI structured outputs to parse fitness goals, schedule, and equipment.
+- **Fitness Assessment System**: Offers Bodyweight/Weights Tests, mapping data to 10 movement patterns.
+- **Adaptive Training**: Algorithms select from prebuilt templates (Strength Primary, Cardio Primary, Hybrid Balance) for custom 8-week programs.
+- **Science-Based Workout Structure**: Workouts have specific focuses (e.g., squat, push, hinge, pull) determining exercise selection and warmups.
+- **Goal-Based Programming**: Implements mixed strength/hypertrophy training adjusted for experience.
+- **CNS-Ordered Workout Progression**: Follows warmup → power → compounds → isolations → core → cardio hierarchy.
+- **Superset & Time Allocation**: Aggressive superset programming and percentage-based time allocation.
+- **Time-Based Fallback System**: Adds exercises to meet target workout duration.
+- **Calendar-Aligned Sessions**: Programs start on the user's current day.
+- **Smart Exercise Reuse & Progressive Overload**: Implements hierarchical reuse and automatic difficulty adjustment.
 - **Intelligent Muscle Tracking**: Prevents muscle overwork.
-- **7-Day Cycle System**: Users select calendar dates; system prompts for continuation or new program upon cycle completion.
+- **7-Day Cycle System**: Users select calendar dates; system prompts for continuation or new program.
 - **Daily Calendar Workflow**: Displays today's workout, allows cardio/rest days, and previews tomorrow.
-- **Partial Workout System**: Allows resuming workouts ended early.
-- **Automatic Missed Workout Rescheduling**: Detects and reschedules missed workouts, shifting future sessions.
-- **Flexible Exercise Swap System**: Allows swapping exercises with equipment/bodyweight options, persisting changes.
-- **Calorie Tracking & Cardio Variety**: Incorporates MET calculations and goal-based cardio type rotation.
+- **Partial Workout System**: Allows resuming ended workouts.
+- **Automatic Missed Workout Rescheduling**: Detects and reschedules missed workouts.
+- **Flexible Exercise Swap System**: Allows swapping exercises with equipment/bodyweight options.
+- **Calorie Tracking & Cardio Variety**: Incorporates MET calculations and goal-based cardio rotation.
 - **HIIT Interval Training**: Supports automated timers and custom intervals.
 - **Unified Program Settings**: Combines nutrition and workout preferences, triggering program regeneration.
-- **Trainer Marketplace**: Allows trainers to create custom exercises, build, publish, and sell training programs, and manage clients. Features include a 3-step onboarding wizard with required username selection, freemium coach connection system (5 free client slots, premium for unlimited), soft-delete architecture for trainer-client disconnections, username-based coach discovery, program builder, publishing flow, and a sales dashboard for revenue/client tracking. Clients can connect with coaches via username search in settings or during onboarding.
-- **Trainer Workout Notes System**: Enables trainers to provide personalized guidance through workout-specific notes. Trainers can add pre-session notes (visible to clients before workout starts) and post-session reviews (visible in workout history after completion). Notes are managed through the "Workouts" tab in ClientDetail page with branched authorization ensuring trainers can only edit note fields for active client connections. Clients view pre-session notes in a dedicated card before starting workouts and see post-session reviews in their workout history. No chat/messaging system - all trainer-client interaction occurs exclusively through workout notes.
+- **Trainer Marketplace**: Allows trainers to create, publish, and sell programs, and manage clients with features like a 3-step onboarding wizard, freemium coach connection system (5 free client slots, premium for unlimited), soft-delete architecture for disconnections, username-based coach discovery, and a sales dashboard. Clients can connect with coaches via username search.
+- **Trainer Workout Notes System**: Enables trainers to provide pre-session notes (visible before workout) and post-session reviews (visible in history). This is the exclusive method for trainer-client interaction.
 
 ## External Dependencies
 - **UI Libraries**: Radix UI primitives, Recharts, date-fns, cmdk, Lucide React.

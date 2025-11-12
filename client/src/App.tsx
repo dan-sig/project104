@@ -28,6 +28,7 @@ import Body from "./pages/Body";
 import FitnessTest from "./pages/FitnessTest";
 import WorkoutPreview from "./pages/WorkoutPreview";
 import Settings from "./pages/Settings";
+import UserSettings from "./pages/UserSettings";
 import WorkoutPage from "./pages/Workout";
 import WeightsTestForm from "./components/WeightsTestForm";
 import BottomNavigation from "./components/BottomNavigation";
@@ -363,6 +364,10 @@ function AppRoutes() {
           </Route>
 
           <Route path="/settings">
+            <UserSettings />
+          </Route>
+
+          <Route path="/settings/program">
             <Settings />
           </Route>
 

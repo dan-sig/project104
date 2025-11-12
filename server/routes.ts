@@ -5125,6 +5125,48 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // ==========================================
+  // USER SUPPORT ROUTES
+  // ==========================================
+
+  // POST /api/support-requests - Submit a support request (for regular users)
+  app.post("/api/support-requests", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log('[API] POST /api/support-requests - userId:', userId);
+      console.log('[API] POST /api/support-requests - req.body:', req.body);
+      
+      const { insertSupportRequestSchema } = await import("@shared/schema");
+      
+      const validated = insertSupportRequestSchema.parse({
+        ...req.body,
+        userId: null, // Will be set by storage method
+        trainerId: null,
+      });
+      
+      console.log('[API] POST /api/support-requests - validated:', validated);
+      
+      const request = await storage.createUserSupportRequest(userId, validated);
+      console.log('[API] POST /api/support-requests - created request:', request);
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("[API] Error creating user support request:", error);
+      res.status(500).json({ error: "Failed to create support request" });
+    }
+  });
+
+  // GET /api/support-requests - Get all support requests for authenticated user
+  app.get("/api/support-requests", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getUserSupportRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching user support requests:", error);
+      res.status(500).json({ error: "Failed to fetch support requests" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Mark routes as registered only after successful setup
