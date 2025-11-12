@@ -21,9 +21,10 @@ import { AssignProgramDialog } from './AssignProgramDialog';
 
 interface TrainerRosterTableProps {
   filterType?: 'inactive' | null;
+  onClearFilter?: () => void;
 }
 
-export function TrainerRosterTable({ filterType }: TrainerRosterTableProps = {}) {
+export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterTableProps = {}) {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -31,7 +32,7 @@ export function TrainerRosterTable({ filterType }: TrainerRosterTableProps = {})
 
   const { clients, isLoading } = useTrainerClients();
 
-  const { data: alertDetail } = useQuery<{
+  const { data: alertDetail, isLoading: isLoadingAlerts } = useQuery<{
     inactiveClients: Array<{ clientId: string; clientName: string; lastWorkout: string | null }>;
     workoutsMissingNotes: Array<{ clientId: string; clientName: string; workoutId: string }>;
   }>({
@@ -74,10 +75,23 @@ export function TrainerRosterTable({ filterType }: TrainerRosterTableProps = {})
           </div>
           <div className="flex items-center gap-2">
             {filterType && (
-              <Badge variant="secondary" className="gap-1" data-testid="badge-active-filter">
-                <AlertTriangle className="h-3 w-3" />
-                {filterType} filter
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1" data-testid="badge-active-filter">
+                  <AlertTriangle className="h-3 w-3" />
+                  {filterType} filter
+                </Badge>
+                {onClearFilter && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClearFilter}
+                    data-testid="button-clear-filter"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
             )}
             <div className="relative w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -93,9 +107,9 @@ export function TrainerRosterTable({ filterType }: TrainerRosterTableProps = {})
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoading || (filterType && isLoadingAlerts) ? (
           <div className="text-center py-12 text-muted-foreground">
-            Loading client roster...
+            {isLoading ? 'Loading client roster...' : 'Loading filtered clients...'}
           </div>
         ) : clients.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">

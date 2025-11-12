@@ -219,7 +219,10 @@ export default function TrainerDashboard() {
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
-            <TrainerRosterTable filterType={clientFilter} />
+            <TrainerRosterTable 
+              filterType={clientFilter} 
+              onClearFilter={() => setClientFilter(null)}
+            />
           </TabsContent>
 
           <TabsContent value="client-experience" className="mt-6 space-y-8">
