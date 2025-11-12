@@ -3071,13 +3071,53 @@ Provide a helpful, motivating response that addresses their question using this 
         return res.status(404).json({ error: "Session not found" });
       }
 
-      // Verify ownership
-      if (oldSession.userId !== userId) {
-        return res.status(403).json({ error: "Not authorized to update this session" });
-      }
-
       // Validate and transform the patch data (converts boolean completed to integer)
       const validatedData = patchWorkoutSessionSchema.parse(req.body);
+
+      // Branched authorization: Client path vs Trainer path
+      const isSessionOwner = oldSession.userId === userId;
+      
+      if (isSessionOwner) {
+        // CLIENT PATH: Session owner can update any field (existing logic continues below)
+      } else {
+        // TRAINER PATH: Check if user is a trainer with active connection to this client
+        const trainerConnection = await storage.getTrainerClientConnection(userId, oldSession.userId);
+        
+        if (!trainerConnection) {
+          return res.status(403).json({ error: "Not authorized to update this session" });
+        }
+
+        // Trainer can ONLY update trainer note fields
+        const allowedTrainerFields = ['trainerPreSessionNotes', 'trainerPostSessionReview'];
+        const requestedFields = Object.keys(validatedData);
+        const unauthorizedFields = requestedFields.filter(field => !allowedTrainerFields.includes(field));
+        
+        if (unauthorizedFields.length > 0) {
+          return res.status(403).json({ 
+            error: "Trainers can only update trainer notes",
+            unauthorizedFields 
+          });
+        }
+
+        // Require at least one trainer note field (check for undefined, allow empty strings)
+        if (validatedData.trainerPreSessionNotes === undefined && validatedData.trainerPostSessionReview === undefined) {
+          return res.status(400).json({ error: "At least one trainer note field is required" });
+        }
+
+        // Update only trainer notes (skip all client-side effects)
+        const trainerNoteUpdates: any = {};
+        if (validatedData.trainerPreSessionNotes !== undefined) {
+          trainerNoteUpdates.trainerPreSessionNotes = validatedData.trainerPreSessionNotes;
+        }
+        if (validatedData.trainerPostSessionReview !== undefined) {
+          trainerNoteUpdates.trainerPostSessionReview = validatedData.trainerPostSessionReview;
+        }
+
+        const session = await storage.updateWorkoutSession(req.params.sessionId, trainerNoteUpdates);
+        return res.json(session);
+      }
+
+      // CLIENT PATH CONTINUES: Original logic for session owner
 
       // Do NOT auto-archive - sessions stay visible with their status until date changes
       // Archival happens automatically when viewing home page on a new day
