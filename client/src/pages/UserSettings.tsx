@@ -66,19 +66,16 @@ export default function UserSettings() {
   const supportForm = useForm<z.infer<typeof supportFormSchema>>({
     resolver: zodResolver(supportFormSchema),
     defaultValues: {
-      category: "" as any,
+      category: undefined,
       subject: "",
       message: "",
     },
   });
 
   const createSupportMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof supportFormSchema>) => {
-      console.log('[UserSettings] Calling apiRequest with data:', data);
-      return apiRequest('/api/support-requests', 'POST', data);
-    },
+    mutationFn: async (data: z.infer<typeof supportFormSchema>) =>
+      apiRequest('POST', '/api/support-requests', data),
     onSuccess: () => {
-      console.log('[UserSettings] Support request created successfully');
       toast({
         title: "Support request submitted",
         description: "We'll get back to you as soon as possible.",
@@ -86,8 +83,7 @@ export default function UserSettings() {
       supportForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/support-requests'] });
     },
-    onError: (error) => {
-      console.error('[UserSettings] Error creating support request:', error);
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to submit support request. Please try again.",
@@ -97,16 +93,8 @@ export default function UserSettings() {
   });
 
   const onSubmitSupport = (data: z.infer<typeof supportFormSchema>) => {
-    console.log('[UserSettings] Form submitted with data:', data);
-    console.log('[UserSettings] Form errors:', supportForm.formState.errors);
     createSupportMutation.mutate(data);
   };
-
-  // Log any form validation errors
-  const formErrors = supportForm.formState.errors;
-  if (Object.keys(formErrors).length > 0) {
-    console.log('[UserSettings] Current form validation errors:', formErrors);
-  }
 
   if (isLoadingUser) {
     return (
@@ -435,7 +423,7 @@ export default function UserSettings() {
                               {request.subject}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {new Date(request.createdAt).toLocaleDateString()}
+                              {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : 'N/A'}
                             </p>
                           </div>
                           <Badge variant={

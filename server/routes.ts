@@ -5133,9 +5133,6 @@ Provide a helpful, motivating response that addresses their question using this 
   app.post("/api/support-requests", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      console.log('[API] POST /api/support-requests - userId:', userId);
-      console.log('[API] POST /api/support-requests - req.body:', req.body);
-      
       const { insertSupportRequestSchema } = await import("@shared/schema");
       
       const validated = insertSupportRequestSchema.parse({
@@ -5144,13 +5141,10 @@ Provide a helpful, motivating response that addresses their question using this 
         trainerId: null,
       });
       
-      console.log('[API] POST /api/support-requests - validated:', validated);
-      
       const request = await storage.createUserSupportRequest(userId, validated);
-      console.log('[API] POST /api/support-requests - created request:', request);
       res.status(201).json(request);
     } catch (error) {
-      console.error("[API] Error creating user support request:", error);
+      console.error("Error creating user support request:", error);
       res.status(500).json({ error: "Failed to create support request" });
     }
   });
