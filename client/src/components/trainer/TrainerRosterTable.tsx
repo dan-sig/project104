@@ -63,7 +63,7 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Client Roster
+              Client Summary
             </CardTitle>
             <CardDescription>
               {filterType ? (
@@ -109,7 +109,7 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
       <CardContent>
         {isLoading || (filterType && isLoadingAlerts) ? (
           <div className="text-center py-12 text-muted-foreground">
-            {isLoading ? 'Loading client roster...' : 'Loading filtered clients...'}
+            {isLoading ? 'Loading client summary...' : 'Loading filtered clients...'}
           </div>
         ) : clients.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">

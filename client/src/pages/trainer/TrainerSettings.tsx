@@ -548,7 +548,7 @@ export default function TrainerSettings() {
                     <AccordionContent data-testid="faq-content-3">
                       You can connect with clients through the "Client Invitations" tab on your Trainer Dashboard. 
                       Search for users by username or email and send them an invitation to connect. Once they accept, 
-                      they'll appear in your Client Roster. You can also receive invitations from clients who want to 
+                      they'll appear in your Client Summary. You can also receive invitations from clients who want to 
                       work with you. Note that free accounts are limited to 5 active client connections, while premium 
                       accounts have unlimited connections.
                     </AccordionContent>
@@ -656,7 +656,7 @@ export default function TrainerSettings() {
                   <p className="text-muted-foreground">
                     Find and connect with clients using the "Client Invitations" tab. Search for users by their 
                     username or email address, then send them an invitation to connect. When they accept, they'll 
-                    appear in your Client Roster where you can track their progress.
+                    appear in your Client Summary where you can track their progress.
                   </p>
                   <p className="text-sm text-muted-foreground">
                     <strong>Tip:</strong> Free accounts can connect with up to 5 clients. Upgrade to Premium for 
@@ -676,7 +676,7 @@ export default function TrainerSettings() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-muted-foreground">
-                    Monitor your clients' training progress from the Client Roster. Click on any client to view 
+                    Monitor your clients' training progress from the Client Summary. Click on any client to view 
                     their detailed profile, workout history, and performance metrics. You can see which workouts 
                     they've completed, track their progression, and identify areas that need attention.
                   </p>
