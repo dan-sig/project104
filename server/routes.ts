@@ -4105,6 +4105,37 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
+  // USER ALERT ROUTES
+  // ==========================================
+  // Endpoints for retrieving user alerts and notifications
+
+  // GET /api/user/alerts - Get alert summary for user dashboard
+  app.get("/api/user/alerts", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Run all alert queries in parallel for efficiency
+      const [workoutStreak, unreadNotes, pendingInvites, programStatus] = await Promise.all([
+        storage.getUserWorkoutStreak(userId),
+        storage.getUnreadTrainerNotes(userId),
+        storage.getUserPendingInvites(userId),
+        storage.getUserProgramStatus(userId),
+      ]);
+
+      res.json({
+        workoutStreak,
+        unreadTrainerNotes: unreadNotes,
+        pendingInvites,
+        programStatus,
+        totalAlerts: unreadNotes + pendingInvites + (programStatus.hasActiveProgram ? 0 : 1),
+      });
+    } catch (error) {
+      console.error("Error fetching user alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+
+  // ==========================================
   // CLIENT-TRAINER CONNECTION ROUTES
   // ==========================================
   // Endpoints for connecting clients to trainers via username

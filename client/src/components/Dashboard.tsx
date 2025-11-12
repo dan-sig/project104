@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dumbbell, Calendar, TrendingUp, History, Play } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dumbbell, Calendar, TrendingUp, History, Play, Flame, MessageSquare, Target, UserPlus, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import ThemeToggle from "./ThemeToggle";
+import { getDailyQuote } from "@shared/motivationalQuotes";
 import type { WorkoutProgram, ProgramWorkout, WorkoutSession } from "@shared/schema";
 
 interface WorkoutWithExercises extends ProgramWorkout {
@@ -42,7 +44,21 @@ export default function Dashboard({
     queryKey: ['/api/workout-sessions'],
   });
 
-  const isLoading = isLoadingProgram || isLoadingFull || isLoadingSessions;
+  const { data: userAlerts, isLoading: isLoadingAlerts } = useQuery<{
+    workoutStreak: number;
+    unreadTrainerNotes: number;
+    pendingInvites: number;
+    programStatus: {
+      hasActiveProgram: boolean;
+      daysRemaining: number | null;
+      programName: string | null;
+    };
+    totalAlerts: number;
+  }>({
+    queryKey: ['/api/user/alerts'],
+  });
+
+  const isLoading = isLoadingProgram || isLoadingFull || isLoadingSessions || isLoadingAlerts;
 
   const completedWorkouts = workoutSessions?.filter(s => s.status === 'complete')?.length || 0;
   const totalWorkouts = (fullProgram?.durationWeeks || 0) * (fullProgram?.workouts?.length || 0);
@@ -126,6 +142,131 @@ export default function Dashboard({
           <h2 className="text-3xl font-bold mb-2">Welcome back!</h2>
           <p className="text-muted-foreground">Ready to crush your next workout?</p>
         </div>
+
+        {/* Daily Motivational Quote */}
+        <Card className="p-6 bg-gradient-to-r from-primary/10 to-primary/5" data-testid="card-daily-quote">
+          <div className="flex items-start gap-4">
+            <Sparkles className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
+            <div>
+              <p className="text-lg italic text-foreground" data-testid="text-motivational-quote">
+                "{getDailyQuote()}"
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Alert Cards */}
+        {userAlerts && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Workout Streak */}
+            <Card className="p-6 border-l-4 border-l-green-500" data-testid="card-workout-streak">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Flame className="h-6 w-6 text-green-600" />
+                  <div>
+                    <h3 className="font-semibold">Workout Streak</h3>
+                    <p className="text-sm text-muted-foreground">Keep the momentum going</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-lg font-bold" data-testid="badge-streak-count">
+                  {userAlerts.workoutStreak} {userAlerts.workoutStreak === 1 ? 'day' : 'days'}
+                </Badge>
+              </div>
+            </Card>
+
+            {/* Trainer Notes */}
+            {userAlerts.unreadTrainerNotes > 0 && (
+              <Card className="p-6 border-l-4 border-l-blue-500" data-testid="card-trainer-notes">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <h3 className="font-semibold">Trainer Notes</h3>
+                      <p className="text-sm text-muted-foreground">New guidance from your trainer</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-500/10" data-testid="badge-notes-count">
+                    {userAlerts.unreadTrainerNotes}
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onViewHistory}
+                  data-testid="button-view-notes"
+                >
+                  View Notes
+                </Button>
+              </Card>
+            )}
+
+            {/* Program Status */}
+            {userAlerts.programStatus.hasActiveProgram ? (
+              <Card className="p-6 border-l-4 border-l-green-500" data-testid="card-program-status">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Target className="h-6 w-6 text-green-600" />
+                    <div>
+                      <h3 className="font-semibold">Program Status</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {userAlerts.programStatus.programName}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-green-500/10" data-testid="badge-days-remaining">
+                    {userAlerts.programStatus.daysRemaining !== null 
+                      ? `${userAlerts.programStatus.daysRemaining} days left`
+                      : 'Active'}
+                  </Badge>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-6 border-l-4 border-l-yellow-500" data-testid="card-no-program">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Target className="h-6 w-6 text-yellow-600" />
+                    <div>
+                      <h3 className="font-semibold">No Active Program</h3>
+                      <p className="text-sm text-muted-foreground">Start your fitness journey</p>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-start-program"
+                >
+                  Generate Program
+                </Button>
+              </Card>
+            )}
+
+            {/* Pending Invites */}
+            {userAlerts.pendingInvites > 0 && (
+              <Card className="p-6 border-l-4 border-l-purple-500" data-testid="card-pending-invites">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <UserPlus className="h-6 w-6 text-purple-600" />
+                    <div>
+                      <h3 className="font-semibold">Pending Invites</h3>
+                      <p className="text-sm text-muted-foreground">Trainer connection requests</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-purple-500/10" data-testid="badge-invites-count">
+                    {userAlerts.pendingInvites}
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-view-invites"
+                >
+                  View Invites
+                </Button>
+              </Card>
+            )}
+          </div>
+        )}
 
         {fullProgram ? (
           <>

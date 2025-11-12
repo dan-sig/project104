@@ -206,6 +206,15 @@ export interface IStorage {
     scheduledDate: string;
     noteType: 'pre-session' | 'post-session';
   }>>;
+  
+  getUserWorkoutStreak(userId: string): Promise<number>;
+  getUnreadTrainerNotes(userId: string): Promise<number>;
+  getUserPendingInvites(userId: string): Promise<number>;
+  getUserProgramStatus(userId: string): Promise<{
+    hasActiveProgram: boolean;
+    daysRemaining: number | null;
+    programName: string | null;
+  }>;
 }
 
 
@@ -1630,6 +1639,163 @@ export class DbStorage implements IStorage {
     ];
 
     return results;
+  }
+
+  // ==========================================
+  // USER ALERT OPERATIONS
+  // ==========================================
+  
+  async getUserWorkoutStreak(userId: string): Promise<number> {
+    // Get completed workouts in chronological order
+    const completedSessions = await db
+      .select({ scheduledDate: workoutSessions.scheduledDate })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          eq(workoutSessions.status, 'complete')
+        )
+      )
+      .orderBy(desc(workoutSessions.scheduledDate));
+
+    if (completedSessions.length === 0) return 0;
+
+    // Calculate streak from today backwards
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak = 0;
+    let currentDate = new Date(today);
+
+    // Check each day going backwards
+    for (let i = 0; i < 365; i++) { // Max 1 year streak
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const hasWorkout = completedSessions.some(s => s.scheduledDate === dateStr);
+      
+      if (hasWorkout) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        // Allow for rest days (check if we've started the streak)
+        if (streak > 0) {
+          // If no workout for 3+ consecutive days, streak is broken
+          const threeDaysAgo = new Date(currentDate);
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 2);
+          const hasRecentWorkout = completedSessions.some(s => {
+            const sDate = new Date(s.scheduledDate!);
+            return sDate > threeDaysAgo && sDate <= currentDate;
+          });
+          
+          if (!hasRecentWorkout) break;
+        }
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+    }
+
+    return streak;
+  }
+
+  async getUnreadTrainerNotes(userId: string): Promise<number> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Count upcoming workouts with pre-session notes
+    const upcomingWithNotes = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          gte(workoutSessions.scheduledDate, today),
+          eq(workoutSessions.status, 'scheduled'),
+          sql`${workoutSessions.trainerPreSessionNotes} IS NOT NULL AND ${workoutSessions.trainerPreSessionNotes} != ''`
+        )
+      );
+
+    // Count completed workouts with post-session reviews
+    const completedWithReviews = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          eq(workoutSessions.status, 'complete'),
+          sql`${workoutSessions.trainerPostSessionReview} IS NOT NULL AND ${workoutSessions.trainerPostSessionReview} != ''`
+        )
+      );
+
+    return (upcomingWithNotes[0]?.count || 0) + (completedWithReviews[0]?.count || 0);
+  }
+
+  async getUserPendingInvites(userId: string): Promise<number> {
+    // Count pending invites where user is the client (received invites from trainers)
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(trainerClientInvites)
+      .where(
+        and(
+          eq(trainerClientInvites.clientId, userId),
+          eq(trainerClientInvites.status, 'pending')
+        )
+      );
+
+    return result[0]?.count || 0;
+  }
+
+  async getUserProgramStatus(userId: string): Promise<{
+    hasActiveProgram: boolean;
+    daysRemaining: number | null;
+    programName: string | null;
+  }> {
+    const activeProgram = await this.getUserActiveProgram(userId);
+    
+    if (!activeProgram) {
+      return {
+        hasActiveProgram: false,
+        daysRemaining: null,
+        programName: null,
+      };
+    }
+
+    // Get all sessions for this program
+    const sessions = await db
+      .select({ scheduledDate: workoutSessions.scheduledDate })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          eq(workoutSessions.workoutProgramId, activeProgram.id)
+        )
+      )
+      .orderBy(desc(workoutSessions.scheduledDate));
+
+    if (sessions.length === 0) {
+      return {
+        hasActiveProgram: true,
+        daysRemaining: null,
+        programName: activeProgram.programType,
+      };
+    }
+
+    // Find the last scheduled date
+    const lastDate = sessions[0].scheduledDate;
+    if (!lastDate) {
+      return {
+        hasActiveProgram: true,
+        daysRemaining: null,
+        programName: activeProgram.programType,
+      };
+    }
+
+    // Calculate days remaining
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(lastDate);
+    const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      hasActiveProgram: true,
+      daysRemaining: Math.max(0, daysRemaining),
+      programName: activeProgram.programType,
+    };
   }
 }
 
