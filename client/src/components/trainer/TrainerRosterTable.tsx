@@ -9,16 +9,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Users, MessageCircle, AlertTriangle } from 'lucide-react';
+import { Search, Users, MessageCircle, AlertTriangle, Plus } from 'lucide-react';
 import { useMergedClientData } from '@/hooks/useMergedClientData';
 import { format, formatDistanceToNow } from 'date-fns';
+import { AssignProgramDialog } from './AssignProgramDialog';
 
 export function TrainerRosterTable() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
 
   const { clients, isLoading } = useMergedClientData();
 
@@ -79,17 +83,20 @@ export function TrainerRosterTable() {
                   <TableHead className="text-center">Alerts</TableHead>
                   <TableHead className="text-center">Messages</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client) => (
+                {filteredClients.map((client) => {
+                  const hasProgram = !!client.currentProgram && client.currentProgram !== 'No program';
+                  
+                  return (
                   <TableRow 
                     key={client.id}
-                    className="cursor-pointer hover-elevate"
-                    onClick={() => setLocation(`/trainer/client/${client.id}`)}
+                    className="hover-elevate"
                     data-testid={`row-client-${client.id}`}
                   >
-                    <TableCell>
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="cursor-pointer">
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarFallback className="bg-primary text-primary-foreground">
@@ -106,7 +113,7 @@ export function TrainerRosterTable() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="cursor-pointer">
                       <div className="font-medium">
                         {client.currentProgram || 'No program'}
                       </div>
@@ -116,7 +123,7 @@ export function TrainerRosterTable() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="cursor-pointer">
                       {client.lastWorkout ? (
                         <div>
                           <div className="text-sm font-medium">
@@ -130,7 +137,7 @@ export function TrainerRosterTable() {
                         <span className="text-sm text-muted-foreground">No workouts yet</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-center cursor-pointer">
                       {client.alertsCount > 0 ? (
                         <div className="flex items-center justify-center gap-1">
                           <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -142,7 +149,7 @@ export function TrainerRosterTable() {
                         <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-center cursor-pointer">
                       {client.unreadMessages > 0 ? (
                         <div className="flex items-center justify-center gap-1">
                           <MessageCircle className="h-4 w-4 text-primary" />
@@ -154,7 +161,7 @@ export function TrainerRosterTable() {
                         <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-right cursor-pointer">
                       {client.hasPurchase ? (
                         <div>
                           <div className="font-medium text-primary" data-testid={`text-earnings-${client.id}`}>
@@ -168,13 +175,40 @@ export function TrainerRosterTable() {
                         <span className="text-sm text-muted-foreground">No purchase</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      {!hasProgram && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClient({ id: client.id, name: client.name });
+                            setAssignDialogOpen(true);
+                          }}
+                          data-testid={`button-assign-program-${client.id}`}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Assign Program
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         )}
       </CardContent>
+
+      {selectedClient && (
+        <AssignProgramDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          clientId={selectedClient.id}
+          clientName={selectedClient.name}
+        />
+      )}
     </Card>
   );
 }

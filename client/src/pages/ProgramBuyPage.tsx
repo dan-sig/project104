@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ReviewList } from "@/components/reviews/ReviewList";
 
 interface ProgramBuyPageData {
   id: string;
@@ -79,6 +80,22 @@ export default function ProgramBuyPage() {
     enabled: !!slug,
   });
 
+  // Fetch program reviews
+  const { data: reviewsData } = useQuery<{
+    reviews: Array<{
+      id: string;
+      rating: number;
+      reviewText?: string | null;
+      createdAt: string;
+      userId: string;
+    }>;
+    averageRating: number;
+    totalReviews: number;
+  }>({
+    queryKey: ["/api/programs", program?.id, "reviews"],
+    enabled: !!program?.id,
+  });
+
   // Validate discount code
   const validateCode = async (code: string) => {
     if (!code.trim()) {
@@ -88,7 +105,7 @@ export default function ProgramBuyPage() {
     
     setCodeValidationStatus('checking');
     try {
-      const response = await apiRequest(`/api/discount-codes/${code}`, "GET");
+      const response: any = await apiRequest(`/api/discount-codes/${code}`, "GET");
       if (response.valid) {
         setCodeValidationStatus('valid');
       } else {
@@ -314,6 +331,18 @@ export default function ProgramBuyPage() {
                 </AccordionItem>
               ))}
             </Accordion>
+
+            {/* Reviews Section */}
+            {reviewsData && (
+              <div className="mt-12">
+                <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+                <ReviewList
+                  reviews={reviewsData.reviews || []}
+                  averageRating={reviewsData.averageRating || 0}
+                  totalReviews={reviewsData.totalReviews || 0}
+                />
+              </div>
+            )}
           </div>
 
           {/* Right: Pricing Card */}
