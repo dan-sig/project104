@@ -3061,6 +3061,38 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // GET /api/workout-sessions/:sessionId - Fetch individual session (client or trainer access)
+  app.get("/api/workout-sessions/:sessionId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { sessionId } = req.params;
+
+      // Fetch the session
+      const session = await storage.getWorkoutSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      // Authorization: Either session owner (client) OR trainer with active connection
+      const isSessionOwner = session.userId === userId;
+      
+      if (!isSessionOwner) {
+        // Check if user is a trainer with active connection to this client
+        const trainerConnection = await storage.getTrainerClientConnection(userId, session.userId);
+        
+        if (!trainerConnection) {
+          return res.status(403).json({ error: "Not authorized to view this session" });
+        }
+      }
+
+      // Return the session
+      return res.json(session);
+    } catch (error) {
+      console.error("Error fetching workout session:", error);
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
   app.patch("/api/workout-sessions/:sessionId", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;

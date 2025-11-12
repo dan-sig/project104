@@ -29,6 +29,7 @@ export function useMergedClientData() {
 
     mergedClients.push({
       ...mockClient,
+      id: purchase?.clientId || mockClient.id, // Use real client ID if available
       purchaseId: purchase?.programId || undefined,
       purchasePrice: purchase?.purchasePrice,
       trainerEarnings: purchase?.trainerEarnings,

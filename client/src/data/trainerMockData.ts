@@ -74,7 +74,7 @@ export const mockClients: MockClient[] = [
   {
     id: 'client-1',
     name: 'Sarah Johnson',
-    email: 'sarah.j@email.com',
+    email: 'sarah.johnson@example.com',
     avatar: 'SJ',
     status: 'active',
     joinedDate: '2025-10-15',
@@ -92,7 +92,7 @@ export const mockClients: MockClient[] = [
   {
     id: 'client-2',
     name: 'Michael Chen',
-    email: 'mchen@email.com',
+    email: 'mike.chen@example.com',
     avatar: 'MC',
     status: 'active',
     joinedDate: '2025-09-20',
@@ -145,8 +145,8 @@ export const mockClients: MockClient[] = [
   },
   {
     id: 'client-5',
-    name: 'Jessica Martinez',
-    email: 'jmartinez@email.com',
+    name: 'Jessica Rodriguez',
+    email: 'jessica.rodriguez@example.com',
     avatar: 'JM',
     status: 'active',
     joinedDate: '2025-10-25',

@@ -92,14 +92,14 @@ export default function ClientDetail() {
     lastWorkoutDate: client.recentSessions[0]?.scheduledDate || null,
     currentProgram: client.activeProgram,
     profile: {
-      fitnessLevel: client.fitnessLevel,
-      goals: client.primaryGoal,
+      fitnessLevel: client.fitnessLevel || 'beginner',
+      goals: client.primaryGoal || 'General fitness',
       injuries: null, // Not available in API response
-      availableEquipment: client.equipmentAccess,
-      daysPerWeek: client.weeklyWorkoutDays,
-      sessionDuration: client.preferredDuration,
+      availableEquipment: client.equipmentAccess || [],
+      daysPerWeek: client.weeklyWorkoutDays || 3,
+      sessionDuration: client.preferredDuration || 45,
       focusCycle: 'flow', // Not available in API response, using default
-      nutritionGoal: client.nutritionGoal,
+      nutritionGoal: client.nutritionGoal || 'maintenance',
     },
   };
 
