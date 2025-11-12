@@ -3504,28 +3504,69 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
-  // DELETE /api/trainer/custom-exercises/:id - Delete a custom exercise
-  app.delete("/api/trainer/custom-exercises/:id", isAuthenticated, async (req: any, res: Response) => {
+  // ==========================================
+  // TRAINER SUPPORT & EXERCISE REQUEST ROUTES
+  // ==========================================
+  
+  // POST /api/trainer/support-requests - Submit a support request
+  app.post("/api/trainer/support-requests", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
-
-      // Get existing exercise to verify ownership
-      const existingExercise = await storage.getTrainerCustomExercise(id);
-      if (!existingExercise) {
-        return res.status(404).json({ error: "Exercise not found" });
-      }
-
-      // Verify the trainer owns this exercise
-      if (existingExercise.trainerId !== userId) {
-        return res.status(403).json({ error: "Not authorized to delete this exercise" });
-      }
-
-      await storage.deleteTrainerCustomExercise(id);
-      res.status(204).send();
+      const { insertSupportRequestSchema } = await import("@shared/schema");
+      
+      const validated = insertSupportRequestSchema.parse({
+        ...req.body,
+        trainerId: userId,
+      });
+      
+      const request = await storage.createSupportRequest(validated);
+      res.status(201).json(request);
     } catch (error) {
-      console.error("Error deleting custom exercise:", error);
-      res.status(500).json({ error: "Failed to delete custom exercise" });
+      console.error("Error creating support request:", error);
+      res.status(500).json({ error: "Failed to create support request" });
+    }
+  });
+
+  // GET /api/trainer/support-requests - Get all support requests for authenticated trainer
+  app.get("/api/trainer/support-requests", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getTrainerSupportRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching support requests:", error);
+      res.status(500).json({ error: "Failed to fetch support requests" });
+    }
+  });
+
+  // POST /api/trainer/exercise-requests - Request to add custom exercise to master database
+  app.post("/api/trainer/exercise-requests", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { insertExerciseRequestSchema } = await import("@shared/schema");
+      
+      const validated = insertExerciseRequestSchema.parse({
+        ...req.body,
+        trainerId: userId,
+      });
+      
+      const request = await storage.createExerciseRequest(validated);
+      res.status(201).json(request);
+    } catch (error) {
+      console.error("Error creating exercise request:", error);
+      res.status(500).json({ error: "Failed to create exercise request" });
+    }
+  });
+
+  // GET /api/trainer/exercise-requests - Get all exercise requests for authenticated trainer
+  app.get("/api/trainer/exercise-requests", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const requests = await storage.getTrainerExerciseRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching exercise requests:", error);
+      res.status(500).json({ error: "Failed to fetch exercise requests" });
     }
   });
 

@@ -767,9 +767,6 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async deleteTrainerCustomExercise(id: string): Promise<void> {
-    await db.delete(trainerCustomExercises).where(eq(trainerCustomExercises.id, id));
-  }
 
   // ==========================================
   // TRAINER PROGRAM OPERATIONS
