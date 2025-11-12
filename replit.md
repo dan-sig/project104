@@ -9,6 +9,16 @@ Morphit is a science-backed fitness application that generates personalized work
 
 ## Recent Changes
 
+### November 12, 2025 - Trainer Dashboard Tab Consolidation
+- **Simplified Navigation**: Consolidated trainer dashboard from 6 tabs down to 3 streamlined tabs:
+  - **Clients** (previously "Client Roster"): Client roster table with active/inactive clients
+  - **Client Experience**: Combined Revenue Overview, Client Stats, Client Invitations, and Discount Codes into single comprehensive view
+  - **Library**: Combined Training Programs and Custom Exercises with inline management capabilities
+- **Component Reusability**: Created TrainerProgramsGrid component extracting core program management logic (data fetching, publish/unpublish, delete, copy links) used by both TrainerDashboard Library tab and TrainerProgramsList page
+- **Improved UX**: Maintained all functionality while reducing cognitive load - trainers can view revenue metrics, manage invitations, create discount codes, manage programs, and create custom exercises without tab-switching
+- **Data-testid Updates**: Updated all tab identifiers to tab-clients, tab-client-experience, tab-library for test consistency
+- **Pending Badge Migration**: Moved pending invites badge from old client-invitations tab to new Client Experience tab
+
 ### November 12, 2025 - Trainer Settings & Support System Complete
 - **Trainer Settings Page**: Created comprehensive TrainerSettings page accessible from dashboard with 5 tabs:
   - Profile: Read-only trainer info (name, username, email, bio, specialties, years of experience)
