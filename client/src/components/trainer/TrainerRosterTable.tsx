@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Users, MessageCircle, AlertTriangle, Plus } from 'lucide-react';
+import { Search, Users, AlertTriangle, Plus } from 'lucide-react';
 import { useMergedClientData } from '@/hooks/useMergedClientData';
 import { format, formatDistanceToNow } from 'date-fns';
 import { AssignProgramDialog } from './AssignProgramDialog';
@@ -81,7 +81,6 @@ export function TrainerRosterTable() {
                   <TableHead>Program</TableHead>
                   <TableHead>Last Workout</TableHead>
                   <TableHead className="text-center">Alerts</TableHead>
-                  <TableHead className="text-center">Messages</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -143,18 +142,6 @@ export function TrainerRosterTable() {
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                           <Badge variant="destructive" data-testid={`badge-alerts-${client.id}`}>
                             {client.alertsCount}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-center cursor-pointer">
-                      {client.unreadMessages > 0 ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <MessageCircle className="h-4 w-4 text-primary" />
-                          <Badge variant="default" data-testid={`badge-messages-${client.id}`}>
-                            {client.unreadMessages}
                           </Badge>
                         </div>
                       ) : (

@@ -2,15 +2,11 @@ import { createContext, useContext, useState, useMemo, useEffect, useRef, type R
 import {
   mockClients,
   mockFeedback,
-  mockMessages,
   mockWorkouts,
   getClientFeedback,
-  getClientMessages,
   getClientWorkouts,
-  getUnreadMessages,
   type MockClient,
   type MockFeedback,
-  type MockMessage,
   type MockWorkout
 } from '@/data/trainerMockData';
 
@@ -30,15 +26,12 @@ interface TrainerDataContextValue {
   getClient: (id: string) => MockClient | undefined;
   getClientWorkouts: (clientId: string) => MockWorkout[];
   getClientFeedback: (clientId: string) => MockFeedback[];
-  getClientMessages: (clientId: string) => MockMessage[];
-  getUnreadMessages: (clientId: string) => MockMessage[];
   getClientCompletionRate: (clientId: string) => number;
   getClientNextWorkout: (clientId: string) => MockWorkout | null;
   getClientStreak: (clientId: string) => number;
   getTotalRevenue: () => number;
   getMonthlyRevenue: () => number;
   getAnnualRevenue: () => number;
-  sendMessage: (clientId: string, message: string) => void;
   resolveFeedback: (feedbackId: string) => void;
   updateClientProgram: (clientId: string, newProgram: string) => void;
   updateExerciseParams: (clientId: string, workoutId: string, exerciseId: string, updates: ExerciseUpdate) => void;
@@ -49,7 +42,6 @@ const TrainerDataContext = createContext<TrainerDataContextValue | null>(null);
 
 export function TrainerDataProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState(mockClients);
-  const [messages, setMessages] = useState(mockMessages);
   const [feedback, setFeedback] = useState(mockFeedback);
   const [workouts, setWorkouts] = useState(mockWorkouts);
   const performanceAlertsGenerated = useRef(false);
@@ -57,18 +49,6 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
   const getClient = useMemo(() => {
     return (id: string) => clients.find(c => c.id === id);
   }, [clients]);
-
-  const sendMessage = (clientId: string, message: string) => {
-    const newMessage: MockMessage = {
-      id: `msg-${Date.now()}`,
-      clientId,
-      sender: 'trainer',
-      message,
-      timestamp: new Date().toISOString(),
-      read: true
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
 
   const resolveFeedback = (feedbackId: string) => {
     setFeedback(prev => prev.map(f => 
@@ -311,17 +291,12 @@ export function TrainerDataProvider({ children }: { children: ReactNode }) {
     getClient,
     getClientWorkouts: (clientId) => workouts.filter(w => w.clientId === clientId),
     getClientFeedback: (clientId) => feedback.filter(f => f.clientId === clientId && !f.resolved),
-    getClientMessages: (clientId) => messages.filter(m => m.clientId === clientId).sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    ),
-    getUnreadMessages: (clientId) => messages.filter(m => m.clientId === clientId && !m.read),
     getClientCompletionRate,
     getClientNextWorkout,
     getClientStreak,
     getTotalRevenue,
     getMonthlyRevenue,
     getAnnualRevenue,
-    sendMessage,
     resolveFeedback,
     updateClientProgram,
     updateExerciseParams,

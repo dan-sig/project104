@@ -9,7 +9,6 @@ export interface MockClient {
   joinedDate: string;
   lastWorkout: string | null;
   currentProgram: string | null;
-  unreadMessages: number;
   alertsCount: number;
   goals: string;
   daysPerWeek: number;
@@ -35,15 +34,6 @@ export interface MockFeedback {
   setNumber?: number;
   prescribedValue?: string;
   actualValue?: string;
-}
-
-export interface MockMessage {
-  id: string;
-  clientId: string;
-  sender: 'trainer' | 'client';
-  message: string;
-  timestamp: string;
-  read: boolean;
 }
 
 export interface MockLoggedSet {
@@ -90,7 +80,6 @@ export const mockClients: MockClient[] = [
     joinedDate: '2025-10-15',
     lastWorkout: '2025-11-08',
     currentProgram: 'Morphit Build - Week 2',
-    unreadMessages: 2,
     alertsCount: 3,
     goals: 'Build muscle and strength',
     daysPerWeek: 4,
@@ -109,7 +98,6 @@ export const mockClients: MockClient[] = [
     joinedDate: '2025-09-20',
     lastWorkout: '2025-11-07',
     currentProgram: 'Morphit Strong - Week 3',
-    unreadMessages: 0,
     alertsCount: 1,
     goals: 'Increase strength, improve athletic performance',
     daysPerWeek: 5,
@@ -128,7 +116,6 @@ export const mockClients: MockClient[] = [
     joinedDate: '2025-11-01',
     lastWorkout: '2025-11-08',
     currentProgram: 'Morphit Flow - Week 1',
-    unreadMessages: 1,
     alertsCount: 0,
     goals: 'Weight loss and general fitness',
     daysPerWeek: 3,
@@ -147,7 +134,6 @@ export const mockClients: MockClient[] = [
     joinedDate: '2025-08-10',
     lastWorkout: '2025-10-28',
     currentProgram: 'Morphit Move - Week 4',
-    unreadMessages: 0,
     alertsCount: 0,
     goals: 'Mobility and longevity',
     daysPerWeek: 3,
@@ -166,7 +152,6 @@ export const mockClients: MockClient[] = [
     joinedDate: '2025-10-25',
     lastWorkout: '2025-11-08',
     currentProgram: 'Morphit Build - Week 1',
-    unreadMessages: 3,
     alertsCount: 2,
     goals: 'Muscle gain and body recomposition',
     daysPerWeek: 4,
@@ -244,81 +229,6 @@ export const mockFeedback: MockFeedback[] = [
     message: 'Prefer a different rear delt exercise',
     date: '2025-11-08',
     resolved: false
-  }
-];
-
-export const mockMessages: MockMessage[] = [
-  {
-    id: 'msg-1',
-    clientId: 'client-1',
-    sender: 'client',
-    message: 'Hey! I felt some knee pain during squats today. Should I be worried?',
-    timestamp: '2025-11-07T14:30:00',
-    read: false
-  },
-  {
-    id: 'msg-2',
-    clientId: 'client-1',
-    sender: 'trainer',
-    message: 'Thanks for letting me know. Let\'s switch to goblet squats for now while we work on your form. I\'ll adjust your program.',
-    timestamp: '2025-11-07T15:45:00',
-    read: true
-  },
-  {
-    id: 'msg-3',
-    clientId: 'client-1',
-    sender: 'client',
-    message: 'Sounds good! Also, the overhead press weight feels really heavy this week.',
-    timestamp: '2025-11-08T09:15:00',
-    read: false
-  },
-  {
-    id: 'msg-4',
-    clientId: 'client-3',
-    sender: 'client',
-    message: 'Completed my first week! Feeling great 💪',
-    timestamp: '2025-11-08T18:00:00',
-    read: false
-  },
-  {
-    id: 'msg-5',
-    clientId: 'client-5',
-    sender: 'client',
-    message: 'Quick question - can we add more back exercises to my program?',
-    timestamp: '2025-11-08T10:30:00',
-    read: false
-  },
-  {
-    id: 'msg-6',
-    clientId: 'client-5',
-    sender: 'trainer',
-    message: 'Absolutely! I\'ll add some rows and pull-ups to your next workout. How\'s the current volume feeling?',
-    timestamp: '2025-11-08T11:00:00',
-    read: true
-  },
-  {
-    id: 'msg-7',
-    clientId: 'client-5',
-    sender: 'client',
-    message: 'Great! I can definitely handle more volume for back.',
-    timestamp: '2025-11-08T11:15:00',
-    read: false
-  },
-  {
-    id: 'msg-8',
-    clientId: 'client-2',
-    sender: 'trainer',
-    message: 'Great progress this week! Your numbers are going up consistently.',
-    timestamp: '2025-11-06T16:00:00',
-    read: true
-  },
-  {
-    id: 'msg-9',
-    clientId: 'client-2',
-    sender: 'client',
-    message: 'Thanks! Feeling strong. Ready for Week 4.',
-    timestamp: '2025-11-07T08:00:00',
-    read: true
   }
 ];
 
@@ -572,21 +482,9 @@ const mockWorkoutsByClient: Record<string, Omit<MockWorkout, 'clientId'>[]> = {
   ]
 };
 
-// Helper function to get unread messages for a client
-export function getUnreadMessages(clientId: string): MockMessage[] {
-  return mockMessages.filter(m => m.clientId === clientId && !m.read && m.sender === 'client');
-}
-
 // Helper function to get feedback for a client
 export function getClientFeedback(clientId: string): MockFeedback[] {
   return mockFeedback.filter(f => f.clientId === clientId && !f.resolved);
-}
-
-// Helper function to get messages for a client
-export function getClientMessages(clientId: string): MockMessage[] {
-  return mockMessages
-    .filter(m => m.clientId === clientId)
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
 // Flatten workouts into a single array with clientId

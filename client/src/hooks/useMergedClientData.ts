@@ -52,7 +52,6 @@ export function useMergedClientData() {
         joinedDate: realClient.purchaseDate.split('T')[0],
         lastWorkout: null,
         currentProgram: realClient.programName,
-        unreadMessages: 0,
         alertsCount: 0,
         goals: 'Not specified',
         daysPerWeek: 3,
@@ -72,7 +71,6 @@ export function useMergedClientData() {
 
   // Calculate aggregate stats
   const totalAlerts = mergedClients.reduce((sum, c) => sum + c.alertsCount, 0);
-  const totalUnreadMessages = mergedClients.reduce((sum, c) => sum + c.unreadMessages, 0);
   const activeClients = mergedClients.filter(c => c.status === 'active').length;
   const totalRevenue = mergedClients.reduce((sum, c) => sum + (c.trainerEarnings || 0), 0);
 
@@ -81,7 +79,6 @@ export function useMergedClientData() {
     isLoading,
     stats: {
       totalAlerts,
-      totalUnreadMessages,
       activeClients,
       totalRevenue,
     }

@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Dumbbell, TrendingUp, MessageCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, User, Dumbbell, TrendingUp, AlertTriangle } from "lucide-react";
 import { ClientProfile } from "@/components/trainer/ClientProfile";
 import { ClientProgram } from "@/components/trainer/ClientProgram";
 import { ClientProgress } from "@/components/trainer/ClientProgress";
-import { ClientMessages } from "@/components/trainer/ClientMessages";
 import { ClientAlerts } from "@/components/trainer/ClientAlerts";
 
 export default function ClientDetail() {
@@ -73,44 +72,27 @@ export default function ClientDetail() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Alert Summary */}
-        {(client.alertsCount > 0 || client.unreadMessages > 0) && (
-          <div className="flex gap-4 mb-6">
-            {client.alertsCount > 0 && (
-              <Card className="bg-destructive/10 border-destructive/20">
-                <CardContent className="p-4 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  <span className="font-medium">{client.alertsCount} alerts requiring attention</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab("alerts")}
-                  >
-                    View
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-            {client.unreadMessages > 0 && (
-              <Card className="bg-primary/10 border-primary/20">
-                <CardContent className="p-4 flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-primary" />
-                  <span className="font-medium">{client.unreadMessages} unread messages</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab("messages")}
-                  >
-                    View
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+        {client.alertsCount > 0 && (
+          <div className="mb-6">
+            <Card className="bg-destructive/10 border-destructive/20">
+              <CardContent className="p-4 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <span className="font-medium">{client.alertsCount} alerts requiring attention</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab("alerts")}
+                >
+                  View
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -122,15 +104,6 @@ export default function ClientDetail() {
             <TabsTrigger value="progress" data-testid="tab-progress">
               <TrendingUp className="h-4 w-4 mr-2" />
               Progress
-            </TabsTrigger>
-            <TabsTrigger value="messages" data-testid="tab-messages">
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Messages
-              {client.unreadMessages > 0 && (
-                <Badge variant="destructive" className="ml-2 h-5 px-1 text-xs">
-                  {client.unreadMessages}
-                </Badge>
-              )}
             </TabsTrigger>
             <TabsTrigger value="alerts" data-testid="tab-alerts">
               <AlertTriangle className="h-4 w-4 mr-2" />
@@ -154,10 +127,6 @@ export default function ClientDetail() {
 
             <TabsContent value="progress">
               <ClientProgress clientId={client.id} />
-            </TabsContent>
-
-            <TabsContent value="messages">
-              <ClientMessages clientId={client.id} />
             </TabsContent>
 
             <TabsContent value="alerts">
