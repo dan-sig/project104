@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Dumbbell, TrendingUp, AlertTriangle } from "lucide-react";
+import { ArrowLeft, User, Dumbbell, TrendingUp, AlertTriangle, Calendar } from "lucide-react";
 import { ClientProfile } from "@/components/trainer/ClientProfile";
 import { ClientProgram } from "@/components/trainer/ClientProgram";
 import { ClientProgress } from "@/components/trainer/ClientProgress";
 import { ClientAlerts } from "@/components/trainer/ClientAlerts";
+import { ClientWorkoutSessions } from "@/components/trainer/ClientWorkoutSessions";
 
 export default function ClientDetail() {
   const [, params] = useRoute("/trainer/client/:id");
@@ -92,7 +93,7 @@ export default function ClientDetail() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -100,6 +101,10 @@ export default function ClientDetail() {
             <TabsTrigger value="program" data-testid="tab-program">
               <Dumbbell className="h-4 w-4 mr-2" />
               Program
+            </TabsTrigger>
+            <TabsTrigger value="workouts" data-testid="tab-workouts">
+              <Calendar className="h-4 w-4 mr-2" />
+              Workouts
             </TabsTrigger>
             <TabsTrigger value="progress" data-testid="tab-progress">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -123,6 +128,10 @@ export default function ClientDetail() {
 
             <TabsContent value="program">
               <ClientProgram clientId={client.id} />
+            </TabsContent>
+
+            <TabsContent value="workouts">
+              <ClientWorkoutSessions clientId={client.id} />
             </TabsContent>
 
             <TabsContent value="progress">

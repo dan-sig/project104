@@ -3745,6 +3745,28 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // GET /api/trainer/clients/:clientId/sessions - Get client's workout sessions for trainer
+  app.get("/api/trainer/clients/:clientId/sessions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { clientId } = req.params;
+
+      // Verify trainer has active connection to this client
+      const connection = await storage.getTrainerClientConnection(trainerId, clientId);
+      if (!connection) {
+        return res.status(403).json({ error: "Not authorized to view this client's workout sessions" });
+      }
+
+      // Fetch client's workout sessions using storage interface
+      const sessions = await storage.getUserSessions(clientId);
+
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching client workout sessions:", error);
+      res.status(500).json({ error: "Failed to fetch workout sessions" });
+    }
+  });
+
   // ==========================================
   // TRAINER PROFILE ROUTES
   // ==========================================
