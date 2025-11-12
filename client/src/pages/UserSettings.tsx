@@ -51,6 +51,143 @@ const supportFormSchema = insertSupportRequestSchema.omit({
   trainerId: true,
 });
 
+function TrainerConnectionManager() {
+  const { toast } = useToast();
+  const [searchUsername, setSearchUsername] = useState("");
+
+  const { data: trainerConnection } = useQuery<{ trainer: UserType } | null>({
+    queryKey: ['/api/user/trainer-connection'],
+  });
+
+  const { data: invitations } = useQuery<{
+    received: Array<{ id: number; trainer: UserType; createdAt: string }>;
+    sent: Array<{ id: number; client: UserType; createdAt: string }>;
+  }>({
+    queryKey: ['/api/user/invitations'],
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => apiRequest('POST', '/api/user/disconnect-trainer', {}),
+    onSuccess: () => {
+      toast({ title: "Disconnected", description: "You've been disconnected from your trainer." });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/trainer-connection'] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to disconnect. Please try again.", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Current Trainer */}
+      {trainerConnection?.trainer && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Current Trainer</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium" data-testid="text-trainer-name">
+                  {trainerConnection.trainer.displayName || trainerConnection.trainer.username}
+                </p>
+                <p className="text-sm text-muted-foreground">@{trainerConnection.trainer.username}</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => disconnectMutation.mutate()}
+              disabled={disconnectMutation.isPending}
+              data-testid="button-disconnect-trainer"
+            >
+              {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Search & Connect */}
+      {!trainerConnection?.trainer && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Connect with a Trainer</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Search for a trainer by their username to send a connection request.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter trainer username"
+              value={searchUsername}
+              onChange={(e) => setSearchUsername(e.target.value)}
+              data-testid="input-trainer-search"
+            />
+            <Button data-testid="button-send-invitation" disabled>
+              Send Request
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Trainer search and connection coming soon!
+          </p>
+        </Card>
+      )}
+
+      {/* Pending Invitations */}
+      {invitations && (invitations.received.length > 0 || invitations.sent.length > 0) && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Pending Invitations</h3>
+          
+          {invitations.received.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">Received</h4>
+              <div className="space-y-2">
+                {invitations.received.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{inv.trainer.displayName || inv.trainer.username}</p>
+                        <p className="text-xs text-muted-foreground">@{inv.trainer.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled>Accept</Button>
+                      <Button size="sm" variant="ghost" disabled>Decline</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {invitations.sent.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Sent</h4>
+              <div className="space-y-2">
+                {invitations.sent.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{inv.client.displayName || inv.client.username}</p>
+                        <p className="text-xs text-muted-foreground">@{inv.client.username}</p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">Pending</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function UserSettings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -141,7 +278,7 @@ export default function UserSettings() {
 
       <main className="max-w-7xl mx-auto p-6">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5" data-testid="tabs-user-settings">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5" data-testid="tabs-user-settings">
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -150,17 +287,17 @@ export default function UserSettings() {
               <Crown className="h-4 w-4 mr-2" />
               Subscription
             </TabsTrigger>
+            <TabsTrigger value="trainer" data-testid="tab-trainer">
+              <User className="h-4 w-4 mr-2" />
+              Trainer
+            </TabsTrigger>
             <TabsTrigger value="support" data-testid="tab-support">
               <HeadphonesIcon className="h-4 w-4 mr-2" />
               Support
             </TabsTrigger>
-            <TabsTrigger value="faq" data-testid="tab-faq">
+            <TabsTrigger value="help" data-testid="tab-help">
               <HelpCircle className="h-4 w-4 mr-2" />
-              FAQ
-            </TabsTrigger>
-            <TabsTrigger value="getting-started" data-testid="tab-getting-started">
-              <Rocket className="h-4 w-4 mr-2" />
-              Getting Started
+              Help
             </TabsTrigger>
           </TabsList>
 
@@ -232,6 +369,12 @@ export default function UserSettings() {
                       <Label className="text-sm font-semibold text-muted-foreground">Workouts Per Week</Label>
                       <p className="text-lg" data-testid="text-days-per-week">
                         {user?.daysPerWeek || "Not set"} days
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-semibold text-muted-foreground">Workout Duration</Label>
+                      <p className="text-lg" data-testid="text-workout-duration">
+                        {user?.workoutDuration || "Not set"} minutes
                       </p>
                     </div>
                   </div>
@@ -452,10 +595,36 @@ export default function UserSettings() {
             </div>
           </TabsContent>
 
-          {/* FAQ Tab */}
-          <TabsContent value="faq" data-testid="content-faq">
+          {/* Trainer Tab */}
+          <TabsContent value="trainer" data-testid="content-trainer">
+            {user?.subscriptionTier !== "premium" ? (
+              <Card className="p-6">
+                <div className="text-center py-12 space-y-4">
+                  <Crown className="h-16 w-16 text-muted-foreground mx-auto opacity-50" />
+                  <h3 className="text-xl font-semibold">Premium Feature</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Connect with a personal trainer to get customized workout programs, expert guidance, and accountability. Upgrade to Premium to unlock trainer features.
+                  </p>
+                  <Button onClick={() => {
+                    const tabsElement = document.querySelector('[data-testid="tabs-settings"]');
+                    if (tabsElement) {
+                      const subscriptionTab = tabsElement.querySelector('[value="subscription"]') as HTMLElement;
+                      subscriptionTab?.click();
+                    }
+                  }} data-testid="button-upgrade-premium">
+                    Upgrade to Premium
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <TrainerConnectionManager />
+            )}
+          </TabsContent>
+
+          {/* Help Tab (combines FAQ + Getting Started) */}
+          <TabsContent value="help" data-testid="content-help">
             <Card className="p-6">
-              <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+              <h2 className="text-2xl font-bold mb-6">Help & Getting Started</h2>
               
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="item-1" data-testid="faq-cycles">
@@ -512,76 +681,48 @@ export default function UserSettings() {
                     For best results, we recommend completing the full 4-week progression before switching cycles. However, you can change your focus cycle anytime in Program Settings. When you switch, Morphit will generate a new program based on your selected cycle. Your progress and workout history are always preserved.
                   </AccordionContent>
                 </AccordionItem>
+
+                <AccordionItem value="item-7" data-testid="getting-started">
+                  <AccordionTrigger data-testid="trigger-getting-started">How do I get started with Morphit?</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold mb-2">1. Choose Your Morphit Cycle</h4>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Select one of the 4 training cycles (Flow, Build, Strong, Move) based on your fitness goals. Not sure? Start with Flow for movement quality.
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => setLocation("/settings/program")} data-testid="button-choose-cycle">
+                          Go to Program Settings
+                        </Button>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-2">2. Take Your Fitness Assessment</h4>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Complete bodyweight tests or skip to start at beginner level.
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => setLocation("/assessment")} data-testid="button-start-assessment">
+                          Start Assessment
+                        </Button>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-2">3. Generate Your Program</h4>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Morphit creates a personalized 4-week program with perfect progression.
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-2">4. Start Training!</h4>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Head to your dashboard to see today's workout.
+                        </p>
+                        <Button size="sm" onClick={() => setLocation("/")} data-testid="button-go-dashboard">
+                          Go to Dashboard
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
-            </Card>
-          </TabsContent>
-
-          {/* Getting Started Tab */}
-          <TabsContent value="getting-started" data-testid="content-getting-started">
-            <Card className="p-6">
-              <h2 className="text-2xl font-bold mb-6">Getting Started with Morphit</h2>
-              
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xl font-bold text-primary">1</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Choose Your Morphit Cycle</h3>
-                    <p className="text-muted-foreground mb-3">
-                      Select one of the 4 training cycles based on your current fitness goals. Not sure which to pick? Start with <strong>Flow</strong> to build a strong foundation of movement quality.
-                    </p>
-                    <Button variant="outline" onClick={() => setLocation("/settings/program")} data-testid="button-choose-cycle">
-                      Go to Program Settings
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xl font-bold text-primary">2</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Take Your Fitness Assessment</h3>
-                    <p className="text-muted-foreground mb-3">
-                      Complete a quick fitness assessment to help Morphit customize your program difficulty. You can choose bodyweight tests (push-ups, squats) or skip and start with beginner level.
-                    </p>
-                    <Button variant="outline" onClick={() => setLocation("/assessment")} data-testid="button-start-assessment">
-                      Start Assessment
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xl font-bold text-primary">3</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Generate Your First Program</h3>
-                    <p className="text-muted-foreground mb-3">
-                      Based on your cycle selection, available equipment, and assessment results, Morphit will generate a personalized 4-week training program with the perfect progression for your goals.
-                    </p>
-                    <Button variant="outline" onClick={() => setLocation("/onboarding")} data-testid="button-generate-program">
-                      Generate Program
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xl font-bold text-primary">4</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Start Training!</h3>
-                    <p className="text-muted-foreground mb-3">
-                      Your program is ready. Head to your dashboard to see today's workout. Each session includes CNS-ordered exercises (warmup → power → compounds → isolations → core → cardio) for optimal results.
-                    </p>
-                    <Button onClick={() => setLocation("/")} data-testid="button-go-dashboard">
-                      Go to Dashboard
-                    </Button>
-                  </div>
-                </div>
-              </div>
             </Card>
           </TabsContent>
         </Tabs>

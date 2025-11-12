@@ -233,6 +233,26 @@ export interface IStorage {
   
   getUserWorkoutStreak(userId: string): Promise<number>;
   getUnreadTrainerNotes(userId: string): Promise<number>;
+  getUnreadTrainerNotesDetail(userId: string): Promise<{
+    upcomingNotes: Array<{
+      sessionId: string;
+      scheduledDate: string;
+      workoutName: string;
+      notes: string;
+    }>;
+    pastNotes: Array<{
+      sessionId: string;
+      scheduledDate: string;
+      workoutName: string;
+      review: string;
+    }>;
+  }>;
+  getUnreadTrainerNotesSummary(userId: string): Promise<{
+    upcomingCount: number;
+    pastCount: number;
+    nextUpcomingDate?: string;
+  }>;
+  markNotesAsRead(sessionId: string): Promise<void>;
   getUserPendingInvites(userId: string): Promise<number>;
   getUserProgramStatus(userId: string): Promise<{
     hasActiveProgram: boolean;
@@ -1840,7 +1860,7 @@ export class DbStorage implements IStorage {
   async getUnreadTrainerNotes(userId: string): Promise<number> {
     const today = new Date().toISOString().split('T')[0];
     
-    // Count upcoming workouts with pre-session notes
+    // Count upcoming workouts with unread pre-session notes
     const upcomingWithNotes = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(workoutSessions)
@@ -1849,11 +1869,12 @@ export class DbStorage implements IStorage {
           eq(workoutSessions.userId, userId),
           gte(workoutSessions.scheduledDate, today),
           eq(workoutSessions.status, 'scheduled'),
-          sql`${workoutSessions.trainerPreSessionNotes} IS NOT NULL AND ${workoutSessions.trainerPreSessionNotes} != ''`
+          sql`${workoutSessions.trainerPreSessionNotes} IS NOT NULL AND ${workoutSessions.trainerPreSessionNotes} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
         )
       );
 
-    // Count completed workouts with post-session reviews
+    // Count completed workouts with unread post-session reviews
     const completedWithReviews = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(workoutSessions)
@@ -1861,11 +1882,136 @@ export class DbStorage implements IStorage {
         and(
           eq(workoutSessions.userId, userId),
           eq(workoutSessions.status, 'complete'),
-          sql`${workoutSessions.trainerPostSessionReview} IS NOT NULL AND ${workoutSessions.trainerPostSessionReview} != ''`
+          sql`${workoutSessions.trainerPostSessionReview} IS NOT NULL AND ${workoutSessions.trainerPostSessionReview} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
         )
       );
 
     return (upcomingWithNotes[0]?.count || 0) + (completedWithReviews[0]?.count || 0);
+  }
+
+  async getUnreadTrainerNotesDetail(userId: string): Promise<{
+    upcomingNotes: Array<{
+      sessionId: string;
+      scheduledDate: string;
+      workoutName: string;
+      notes: string;
+    }>;
+    pastNotes: Array<{
+      sessionId: string;
+      scheduledDate: string;
+      workoutName: string;
+      review: string;
+    }>;
+  }> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get upcoming workouts with unread pre-session notes
+    const upcomingNotes = await db
+      .select({
+        sessionId: workoutSessions.id,
+        scheduledDate: workoutSessions.scheduledDate,
+        workoutName: workoutSessions.workoutName,
+        notes: workoutSessions.trainerPreSessionNotes,
+      })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          gte(workoutSessions.scheduledDate, today),
+          eq(workoutSessions.status, 'scheduled'),
+          sql`${workoutSessions.trainerPreSessionNotes} IS NOT NULL AND ${workoutSessions.trainerPreSessionNotes} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
+        )
+      )
+      .orderBy(workoutSessions.scheduledDate)
+      .limit(10);
+
+    // Get completed workouts with unread post-session reviews
+    const pastNotes = await db
+      .select({
+        sessionId: workoutSessions.id,
+        scheduledDate: workoutSessions.scheduledDate,
+        workoutName: workoutSessions.workoutName,
+        review: workoutSessions.trainerPostSessionReview,
+      })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          eq(workoutSessions.status, 'complete'),
+          sql`${workoutSessions.trainerPostSessionReview} IS NOT NULL AND ${workoutSessions.trainerPostSessionReview} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
+        )
+      )
+      .orderBy(desc(workoutSessions.scheduledDate))
+      .limit(10);
+
+    return {
+      upcomingNotes: upcomingNotes.map(n => ({
+        sessionId: n.sessionId,
+        scheduledDate: n.scheduledDate || '',
+        workoutName: n.workoutName || '',
+        notes: n.notes || '',
+      })),
+      pastNotes: pastNotes.map(n => ({
+        sessionId: n.sessionId,
+        scheduledDate: n.scheduledDate || '',
+        workoutName: n.workoutName || '',
+        review: n.review || '',
+      })),
+    };
+  }
+
+  async getUnreadTrainerNotesSummary(userId: string): Promise<{
+    upcomingCount: number;
+    pastCount: number;
+    nextUpcomingDate?: string;
+  }> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Count upcoming workouts with unread pre-session notes
+    const upcomingWithNotes = await db
+      .select({ 
+        count: sql<number>`count(*)::int`,
+        nextDate: sql<string>`MIN(${workoutSessions.scheduledDate})`
+      })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          gte(workoutSessions.scheduledDate, today),
+          eq(workoutSessions.status, 'scheduled'),
+          sql`${workoutSessions.trainerPreSessionNotes} IS NOT NULL AND ${workoutSessions.trainerPreSessionNotes} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
+        )
+      );
+
+    // Count completed workouts with unread post-session reviews
+    const completedWithReviews = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workoutSessions)
+      .where(
+        and(
+          eq(workoutSessions.userId, userId),
+          eq(workoutSessions.status, 'complete'),
+          sql`${workoutSessions.trainerPostSessionReview} IS NOT NULL AND ${workoutSessions.trainerPostSessionReview} != ''`,
+          sql`${workoutSessions.notesReadAt} IS NULL`
+        )
+      );
+
+    return {
+      upcomingCount: upcomingWithNotes[0]?.count || 0,
+      pastCount: completedWithReviews[0]?.count || 0,
+      nextUpcomingDate: upcomingWithNotes[0]?.nextDate || undefined,
+    };
+  }
+
+  async markNotesAsRead(sessionId: string): Promise<void> {
+    await db
+      .update(workoutSessions)
+      .set({ notesReadAt: new Date() })
+      .where(eq(workoutSessions.id, sessionId));
   }
 
   async getUserPendingInvites(userId: string): Promise<number> {

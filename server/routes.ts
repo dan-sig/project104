@@ -900,6 +900,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/user/trainer-connection - Get user's current trainer connection
+  app.get("/api/user/trainer-connection", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const connection = await storage.getClientTrainerConnection(userId);
+      
+      if (!connection) {
+        return res.json(null);
+      }
+
+      // Fetch trainer details
+      const trainer = await storage.getUser(connection.trainerId);
+      const trainerProfile = await storage.getTrainerProfile(connection.trainerId);
+      
+      res.json({
+        connection,
+        trainer: trainer ? {
+          id: trainer.id,
+          firstName: trainer.firstName,
+          lastName: trainer.lastName,
+          email: trainer.email,
+        } : null,
+        trainerProfile,
+      });
+    } catch (error) {
+      console.error("Error fetching trainer connection:", error);
+      res.status(500).json({ error: "Failed to fetch trainer connection" });
+    }
+  });
+
+  // GET /api/user/invitations - Get user's pending invitations (sent and received)
+  app.get("/api/user/invitations", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const invitations = await storage.getClientInvites(userId);
+      
+      res.json(invitations);
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ error: "Failed to fetch invitations" });
+    }
+  });
+
+  // POST /api/user/disconnect-trainer - Disconnect from current trainer
+  app.post("/api/user/disconnect-trainer", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const connection = await storage.getClientTrainerConnection(userId);
+      
+      if (!connection) {
+        return res.status(404).json({ error: "No trainer connection found" });
+      }
+
+      await storage.deleteTrainerClient(connection.id);
+      
+      res.json({ success: true, message: "Disconnected from trainer" });
+    } catch (error) {
+      console.error("Error disconnecting from trainer:", error);
+      res.status(500).json({ error: "Failed to disconnect from trainer" });
+    }
+  });
+
+  // PATCH /api/workout-sessions/:id/mark-notes-read - Mark trainer notes as read
+  app.patch("/api/workout-sessions/:id/mark-notes-read", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const sessionId = req.params.id;
+      
+      // Verify session belongs to user
+      const session = await storage.getWorkoutSession(sessionId);
+      if (!session || session.userId !== userId) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      await storage.markNotesAsRead(sessionId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notes as read:", error);
+      res.status(500).json({ error: "Failed to mark notes as read" });
+    }
+  });
+
 
   // Fitness Assessment routes
   app.post("/api/fitness-assessments", isAuthenticated, async (req: any, res: Response) => {
@@ -2129,11 +2215,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch all home page data in parallel for optimal performance
-      const [user, activeProgram, sessions, fitnessAssessments] = await Promise.all([
+      const [user, activeProgram, sessions, fitnessAssessments, unreadNotesSummary] = await Promise.all([
         storage.getUser(userId),
         storage.getUserActiveProgram(userId),
         storage.getUserSessions(userId),
         storage.getUserFitnessAssessments(userId),
+        storage.getUnreadTrainerNotesSummary(userId),
       ]);
 
       res.json({
@@ -2141,6 +2228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeProgram: activeProgram || null,
         sessions: sessions || [],
         fitnessAssessments: fitnessAssessments || [],
+        unreadTrainerNotes: unreadNotesSummary,
       });
     } catch (error) {
       console.error("Home data fetch error:", error);

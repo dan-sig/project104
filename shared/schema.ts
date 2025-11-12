@@ -339,6 +339,7 @@ export const patchWorkoutSessionSchema = z.object({
   trainerPreSessionNotes: z.string().optional(),
   trainerPostSessionReview: z.string().optional(),
   notes: z.string().optional(),
+  notesReadAt: z.coerce.date().optional(), // Timestamp when user read trainer notes
   sessionDate: z.coerce.date().optional(), // Coerce ISO strings from client to Date
 });
 

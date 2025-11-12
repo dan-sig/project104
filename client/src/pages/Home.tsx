@@ -18,6 +18,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Calendar, Dumbbell, Target, TrendingUp, Settings, Sparkles, PlayCircle, Plus, Heart, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -68,12 +69,17 @@ export default function Home() {
   const { pendingCount: pendingInvitesCount, hasPending: hasPendingInvites } = usePendingInvitesCount();
 
   // STEP 1: Fetch all home page data in single request for performance
-  // Gets: user profile, active program, workout sessions, fitness assessments
+  // Gets: user profile, active program, workout sessions, fitness assessments, unread trainer notes
   const { data: homeData, isLoading: homeDataLoading } = useQuery<{
     user: User | null;
     activeProgram: WorkoutProgram | null;
     sessions: WorkoutSession[];
     fitnessAssessments: FitnessAssessment[];
+    unreadTrainerNotes?: {
+      upcomingCount: number;
+      pastCount: number;
+      nextUpcomingDate?: string;
+    };
   }>({
     queryKey: ["/api/home-data"],
   });
@@ -82,6 +88,7 @@ export default function Home() {
   const activeProgram = homeData?.activeProgram;
   const sessions = homeData?.sessions;
   const fitnessAssessments = homeData?.fitnessAssessments;
+  const unreadNotes = homeData?.unreadTrainerNotes;
 
   const { data: programWorkouts, isLoading: workoutsLoading } = useQuery<ProgramWorkout[]>({
     queryKey: ["/api/program-workouts", activeProgram?.id],
@@ -584,6 +591,43 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+
+        {/* Trainer Notes Alerts */}
+        {unreadNotes && unreadNotes.upcomingCount > 0 && (
+          <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10" data-testid="alert-upcoming-notes">
+            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-600 dark:text-yellow-400">Unread Trainer Notes</AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              You have {unreadNotes.upcomingCount} unread note{unreadNotes.upcomingCount > 1 ? 's' : ''} for upcoming workouts.
+              <Button 
+                variant="ghost" 
+                className="h-auto p-0 ml-1 text-yellow-600 dark:text-yellow-400 underline hover:no-underline" 
+                onClick={() => setLocation('/workout')}
+                data-testid="button-view-upcoming-notes"
+              >
+                View in Workout
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {unreadNotes && unreadNotes.pastCount > 0 && (
+          <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10" data-testid="alert-past-notes">
+            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <AlertTitle className="text-yellow-600 dark:text-yellow-400">Unread Trainer Reviews</AlertTitle>
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              You have {unreadNotes.pastCount} unread review{unreadNotes.pastCount > 1 ? 's' : ''} from past workouts.
+              <Button 
+                variant="ghost" 
+                className="h-auto p-0 ml-1 text-yellow-600 dark:text-yellow-400 underline hover:no-underline" 
+                onClick={() => setLocation('/history')}
+                data-testid="button-view-past-notes"
+              >
+                View in History
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <AITrainingAssistant />
 
