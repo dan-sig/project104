@@ -484,30 +484,36 @@ export type InsertTrainerProgramExercise = z.infer<typeof insertTrainerProgramEx
 export type TrainerProgramExercise = typeof trainerProgramExercises.$inferSelect;
 
 // TABLE: programPurchases
-// Tracks purchases of trainer programs
-// Links buyer to program and tracks revenue split
+// Tracks purchases AND trainer-assigned programs
+// Links buyer to program and tracks revenue split or assignment
 export const programPurchases = pgTable("program_purchases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   trainerProgramId: varchar("trainer_program_id").notNull(),
   trainerId: varchar("trainer_id").notNull(),
-  buyerId: varchar("buyer_id").notNull(), // User ID of purchaser
-  purchasePrice: real("purchase_price").notNull(),
+  buyerId: varchar("buyer_id").notNull(), // User ID of purchaser/assignee
+  purchasePrice: real("purchase_price").notNull(), // 0 for free assignments
   discountCodeId: varchar("discount_code_id"), // Reference to discount code used (null if no discount)
   discountAmount: real("discount_amount"), // Amount discounted (null if no discount)
-  platformFee: real("platform_fee").notNull(), // 20% of price
-  trainerEarnings: real("trainer_earnings").notNull(), // 80% of price
+  platformFee: real("platform_fee").notNull(), // 20% of price (0 for free)
+  trainerEarnings: real("trainer_earnings").notNull(), // 80% of price (0 for free)
   pricingType: text("pricing_type").notNull(), // one_time | subscription
   status: text("status").notNull().default("completed"), // completed | refunded
-  purchaseDate: timestamp("purchase_date").defaultNow(),
+  isAssigned: integer("is_assigned").notNull().default(0), // 0 = purchased by client, 1 = assigned by trainer
+  assignedBy: varchar("assigned_by"), // Trainer ID if manually assigned, null if client-purchased
+  assignmentNote: text("assignment_note"), // Optional note from trainer when assigning
+  createdAt: timestamp("created_at").defaultNow(),
+  fulfilledAt: timestamp("fulfilled_at").defaultNow(), // When purchase/assignment completed
   workoutProgramId: varchar("workout_program_id"), // Generated program ID for the buyer
 });
 
 export const insertProgramPurchaseSchema = createInsertSchema(programPurchases).omit({
   id: true,
-  purchaseDate: true,
+  createdAt: true,
+  fulfilledAt: true,
 }).extend({
   pricingType: z.enum(["one_time", "subscription"]),
   status: z.enum(["completed", "refunded"]).default("completed"),
+  isAssigned: z.number().int().min(0).max(1).default(0),
 });
 
 export type InsertProgramPurchase = z.infer<typeof insertProgramPurchaseSchema>;
@@ -586,6 +592,64 @@ export interface TrainerClientInviteWithUsers {
     };
   };
 }
+
+// TABLE: programReviews
+// Reviews and ratings for trainer programs by clients who've purchased/been assigned them
+export const programReviews = pgTable("program_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  programId: varchar("program_id").notNull(), // References trainerPrograms.id
+  userId: varchar("user_id").notNull(), // Reviewer (must have purchased/been assigned)
+  rating: integer("rating").notNull(), // 1-5
+  title: text("title"), // Optional review title
+  reviewText: text("review_text"),
+  status: text("status").notNull().default("published"), // published | flagged | removed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // One review per user per program
+  uniqueUserProgram: uniqueIndex("unique_user_program_review").on(table.programId, table.userId),
+}));
+
+export const insertProgramReviewSchema = createInsertSchema(programReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  rating: z.number().int().min(1).max(5),
+  status: z.enum(["published", "flagged", "removed"]).default("published"),
+});
+
+export type InsertProgramReview = z.infer<typeof insertProgramReviewSchema>;
+export type ProgramReview = typeof programReviews.$inferSelect;
+
+// TABLE: trainerReviews
+// Reviews and ratings for trainers by their connected clients
+export const trainerReviews = pgTable("trainer_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(), // References trainerProfiles.userId
+  clientId: varchar("client_id").notNull(), // Reviewer (must be connected)
+  rating: integer("rating").notNull(), // 1-5
+  title: text("title"), // Optional review title
+  reviewText: text("review_text"),
+  status: text("status").notNull().default("published"), // published | flagged | removed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // One review per client per trainer
+  uniqueClientTrainer: uniqueIndex("unique_client_trainer_review").on(table.trainerId, table.clientId),
+}));
+
+export const insertTrainerReviewSchema = createInsertSchema(trainerReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  rating: z.number().int().min(1).max(5),
+  status: z.enum(["published", "flagged", "removed"]).default("published"),
+});
+
+export type InsertTrainerReview = z.infer<typeof insertTrainerReviewSchema>;
+export type TrainerReview = typeof trainerReviews.$inferSelect;
 
 // ==========================================
 // TRAINER DASHBOARD API RESPONSE TYPES
