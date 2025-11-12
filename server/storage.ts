@@ -55,6 +55,10 @@ import {
   type InsertTrainerDiscountCode,
   type TrainerClientInvite,
   type InsertTrainerClientInvite,
+  type SupportRequest,
+  type InsertSupportRequest,
+  type ExerciseRequest,
+  type InsertExerciseRequest,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -119,7 +123,6 @@ export interface IStorage {
   getTrainerCustomExercises(trainerId: string): Promise<TrainerCustomExercise[]>;
   getTrainerCustomExercise(id: string): Promise<TrainerCustomExercise | undefined>;
   updateTrainerCustomExercise(id: string, updates: Partial<TrainerCustomExercise>): Promise<TrainerCustomExercise | undefined>;
-  deleteTrainerCustomExercise(id: string): Promise<void>;
   
   getTrainerPrograms(trainerId: string): Promise<any[]>; // Returns TrainerProgram with duration stats
   getTrainerProgram(id: string): Promise<TrainerProgram | undefined>;
@@ -181,6 +184,12 @@ export interface IStorage {
   canClientReviewTrainer(clientId: string, trainerId: string): Promise<boolean>;
   
   assignProgramToClient(trainerId: string, clientId: string, programId: string, note?: string): Promise<ProgramPurchase>;
+  
+  createSupportRequest(request: any): Promise<any>;
+  getTrainerSupportRequests(trainerId: string): Promise<any[]>;
+  
+  createExerciseRequest(request: any): Promise<any>;
+  getTrainerExerciseRequests(trainerId: string): Promise<any[]>;
 }
 
 
@@ -205,6 +214,8 @@ import {
   trainerClientInvites,
   programReviews,
   trainerReviews,
+  supportRequests,
+  exerciseRequests,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1412,6 +1423,28 @@ export class DbStorage implements IStorage {
 
     const result = await db.insert(programPurchases).values(purchase).returning();
     return result[0];
+  }
+
+  async createSupportRequest(request: InsertSupportRequest): Promise<SupportRequest> {
+    const result = await db.insert(supportRequests).values(request).returning();
+    return result[0];
+  }
+
+  async getTrainerSupportRequests(trainerId: string): Promise<SupportRequest[]> {
+    return db.select().from(supportRequests)
+      .where(eq(supportRequests.trainerId, trainerId))
+      .orderBy(desc(supportRequests.createdAt));
+  }
+
+  async createExerciseRequest(request: InsertExerciseRequest): Promise<ExerciseRequest> {
+    const result = await db.insert(exerciseRequests).values(request).returning();
+    return result[0];
+  }
+
+  async getTrainerExerciseRequests(trainerId: string): Promise<ExerciseRequest[]> {
+    return db.select().from(exerciseRequests)
+      .where(eq(exerciseRequests.trainerId, trainerId))
+      .orderBy(desc(exerciseRequests.createdAt));
   }
 }
 

@@ -544,6 +544,60 @@ export const insertTrainerClientSchema = createInsertSchema(trainerClients).omit
 export type InsertTrainerClient = z.infer<typeof insertTrainerClientSchema>;
 export type TrainerClient = typeof trainerClients.$inferSelect;
 
+// ==========================================
+// TRAINER SUPPORT & EXERCISE REQUEST TABLES
+// ==========================================
+
+// TABLE: supportRequests
+// Support tickets submitted by trainers to developers
+export const supportRequests = pgTable("support_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(), // User ID of requesting trainer
+  category: text("category").notNull(), // technical_issue | billing | feature_request | general_question
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("open"), // open | in_progress | resolved | closed
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupportRequestSchema = createInsertSchema(supportRequests).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  category: z.enum(["technical_issue", "billing", "feature_request", "general_question"]),
+});
+
+export type InsertSupportRequest = z.infer<typeof insertSupportRequestSchema>;
+export type SupportRequest = typeof supportRequests.$inferSelect;
+
+// TABLE: exerciseRequests
+// Requests from trainers to add their custom exercise to master database
+export const exerciseRequests = pgTable("exercise_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(), // User ID of requesting trainer
+  customExerciseId: varchar("custom_exercise_id").notNull(), // References trainerCustomExercises.id
+  exerciseName: text("exercise_name").notNull(), // Snapshot of exercise name at time of request
+  justification: text("justification").notNull(), // Why this should be in master DB
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  reviewNotes: text("review_notes"), // Developer notes on approval/rejection
+  createdAt: timestamp("created_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export const insertExerciseRequestSchema = createInsertSchema(exerciseRequests).omit({
+  id: true,
+  status: true,
+  reviewNotes: true,
+  createdAt: true,
+  reviewedAt: true,
+}).extend({});
+
+export type InsertExerciseRequest = z.infer<typeof insertExerciseRequestSchema>;
+export type ExerciseRequest = typeof exerciseRequests.$inferSelect;
+
 // TABLE: trainerClientInvites - Bidirectional invite system for trainer-client connections
 // Tracks pending, accepted, declined, and canceled invitations initiated by either party
 export const trainerClientInvites = pgTable("trainer_client_invites", {
