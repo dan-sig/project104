@@ -169,6 +169,18 @@ export interface IStorage {
   getInviteById(inviteId: string): Promise<TrainerClientInvite | undefined>;
   updateInviteStatus(inviteId: string, status: string, respondedAt?: Date): Promise<TrainerClientInvite | undefined>;
   checkDuplicateInvite(trainerId: string, clientId: string): Promise<TrainerClientInvite | undefined>;
+  
+  createProgramReview(review: any): Promise<any>;
+  getProgramReviews(programId: string): Promise<any[]>;
+  getProgramAverageRating(programId: string): Promise<number>;
+  canUserReviewProgram(userId: string, programId: string): Promise<boolean>;
+  
+  createTrainerReview(review: any): Promise<any>;
+  getTrainerReviews(trainerId: string): Promise<any[]>;
+  getTrainerAverageRating(trainerId: string): Promise<number>;
+  canClientReviewTrainer(clientId: string, trainerId: string): Promise<boolean>;
+  
+  assignProgramToClient(trainerId: string, clientId: string, programId: string, note?: string): Promise<ProgramPurchase>;
 }
 
 
@@ -191,6 +203,8 @@ import {
   trainerProfiles,
   trainerDiscountCodes,
   trainerClientInvites,
+  programReviews,
+  trainerReviews,
 } from "@shared/schema";
 import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -809,13 +823,13 @@ export class DbStorage implements IStorage {
   async getTrainerPurchases(trainerId: string): Promise<ProgramPurchase[]> {
     return db.select().from(programPurchases)
       .where(eq(programPurchases.trainerId, trainerId))
-      .orderBy(desc(programPurchases.purchaseDate));
+      .orderBy(desc(programPurchases.fulfilledAt));
   }
 
   async getProgramPurchases(programId: string): Promise<ProgramPurchase[]> {
     return db.select().from(programPurchases)
       .where(eq(programPurchases.trainerProgramId, programId))
-      .orderBy(desc(programPurchases.purchaseDate));
+      .orderBy(desc(programPurchases.fulfilledAt));
   }
 
   // ==========================================
@@ -845,7 +859,7 @@ export class DbStorage implements IStorage {
         clientEmail: users.email,
         programId: workoutPrograms.id,
         programName: trainerPrograms.name,
-        purchaseDate: programPurchases.purchaseDate,
+        purchaseDate: programPurchases.fulfilledAt,
         subscriptionType: programPurchases.pricingType,
         purchasePrice: programPurchases.purchasePrice,
         trainerEarnings: programPurchases.trainerEarnings,
@@ -890,13 +904,13 @@ export class DbStorage implements IStorage {
         trainerEarnings: programPurchases.trainerEarnings,
         pricingType: programPurchases.pricingType,
         status: programPurchases.status,
-        purchaseDate: programPurchases.purchaseDate,
+        purchaseDate: programPurchases.fulfilledAt,
       })
       .from(programPurchases)
       .leftJoin(trainerPrograms, eq(programPurchases.trainerProgramId, trainerPrograms.id))
       .leftJoin(users, eq(programPurchases.buyerId, users.id))
       .where(eq(programPurchases.trainerId, trainerId))
-      .orderBy(desc(programPurchases.purchaseDate));
+      .orderBy(desc(programPurchases.fulfilledAt));
 
     // Calculate revenue metrics
     const totalRevenue = purchases.reduce((sum, p) => sum + (p.trainerEarnings || 0), 0);
@@ -1271,6 +1285,132 @@ export class DbStorage implements IStorage {
         eq(trainerClientInvites.status, "pending")
       ))
       .limit(1);
+    return result[0];
+  }
+
+  // ==========================================
+  // PROGRAM REVIEW OPERATIONS
+  // ==========================================
+  async createProgramReview(review: any): Promise<any> {
+    const result = await db.insert(programReviews).values(review).returning();
+    return result[0];
+  }
+
+  async getProgramReviews(programId: string): Promise<any[]> {
+    return db.select().from(programReviews)
+      .where(and(
+        eq(programReviews.programId, programId),
+        eq(programReviews.status, "published")
+      ))
+      .orderBy(desc(programReviews.createdAt));
+  }
+
+  async getProgramAverageRating(programId: string): Promise<number> {
+    const result = await db.select({
+      avgRating: sql<number>`AVG(${programReviews.rating})::float`
+    })
+    .from(programReviews)
+    .where(and(
+      eq(programReviews.programId, programId),
+      eq(programReviews.status, "published")
+    ));
+    
+    return result[0]?.avgRating || 0;
+  }
+
+  async canUserReviewProgram(userId: string, programId: string): Promise<boolean> {
+    const purchase = await db.select().from(programPurchases)
+      .where(and(
+        eq(programPurchases.buyerId, userId),
+        eq(programPurchases.trainerProgramId, programId)
+      ))
+      .limit(1);
+    
+    if (purchase.length === 0) return false;
+    
+    const existingReview = await db.select().from(programReviews)
+      .where(and(
+        eq(programReviews.userId, userId),
+        eq(programReviews.programId, programId)
+      ))
+      .limit(1);
+    
+    return existingReview.length === 0;
+  }
+
+  // ==========================================
+  // TRAINER REVIEW OPERATIONS
+  // ==========================================
+  async createTrainerReview(review: any): Promise<any> {
+    const result = await db.insert(trainerReviews).values(review).returning();
+    return result[0];
+  }
+
+  async getTrainerReviews(trainerId: string): Promise<any[]> {
+    return db.select().from(trainerReviews)
+      .where(and(
+        eq(trainerReviews.trainerId, trainerId),
+        eq(trainerReviews.status, "published")
+      ))
+      .orderBy(desc(trainerReviews.createdAt));
+  }
+
+  async getTrainerAverageRating(trainerId: string): Promise<number> {
+    const result = await db.select({
+      avgRating: sql<number>`AVG(${trainerReviews.rating})::float`
+    })
+    .from(trainerReviews)
+    .where(and(
+      eq(trainerReviews.trainerId, trainerId),
+      eq(trainerReviews.status, "published")
+    ));
+    
+    return result[0]?.avgRating || 0;
+  }
+
+  async canClientReviewTrainer(clientId: string, trainerId: string): Promise<boolean> {
+    const connection = await db.select().from(trainerClients)
+      .where(and(
+        eq(trainerClients.clientId, clientId),
+        eq(trainerClients.trainerId, trainerId),
+        eq(trainerClients.status, "active")
+      ))
+      .limit(1);
+    
+    if (connection.length === 0) return false;
+    
+    const existingReview = await db.select().from(trainerReviews)
+      .where(and(
+        eq(trainerReviews.clientId, clientId),
+        eq(trainerReviews.trainerId, trainerId)
+      ))
+      .limit(1);
+    
+    return existingReview.length === 0;
+  }
+
+  // ==========================================
+  // PROGRAM ASSIGNMENT OPERATIONS
+  // ==========================================
+  async assignProgramToClient(trainerId: string, clientId: string, programId: string, note?: string): Promise<ProgramPurchase> {
+    const purchase: InsertProgramPurchase = {
+      trainerProgramId: programId,
+      trainerId,
+      buyerId: clientId,
+      purchasePrice: 0,
+      platformFee: 0,
+      trainerEarnings: 0,
+      pricingType: "one_time",
+      status: "completed",
+      isAssigned: 1,
+      assignedBy: trainerId,
+      assignmentNote: note || null,
+      discountCodeId: null,
+      discountAmount: null,
+      workoutProgramId: null,
+    };
+
+    const result = await db.insert(programPurchases).values(purchase).returning();
     return result[0];
   }
 }
