@@ -10,6 +10,7 @@ import { ClientStats } from "@/components/trainer/ClientStats";
 import { CustomExerciseLibrary } from "@/components/trainer/CustomExerciseLibrary";
 import { DiscountCodeManager } from "@/components/trainer/DiscountCodeManager";
 import { TrainerInvitations } from "@/components/trainer/TrainerInvitations";
+import { TrainerProgramsGrid } from "@/components/trainer/TrainerProgramsGrid";
 import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
 import { usePendingInvitesCount } from "@/hooks/usePendingInvitesCount";
@@ -154,12 +155,9 @@ export default function TrainerDashboard() {
         {/* Main Content with Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList data-testid="tabs-trainer-dashboard">
-            <TabsTrigger value="clients" data-testid="tab-clients">Client Roster</TabsTrigger>
-            <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
-            <TabsTrigger value="programs" data-testid="tab-programs">My Programs</TabsTrigger>
-            <TabsTrigger value="exercises" data-testid="tab-exercises">Custom Exercises</TabsTrigger>
-            <TabsTrigger value="client-invitations" data-testid="tab-client-invitations" className="relative">
-              Client Invitations
+            <TabsTrigger value="clients" data-testid="tab-clients">Clients</TabsTrigger>
+            <TabsTrigger value="client-experience" data-testid="tab-client-experience" className="relative">
+              Client Experience
               {hasPendingInvites && (
                 <Badge 
                   variant="default" 
@@ -170,14 +168,14 @@ export default function TrainerDashboard() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="discount-codes" data-testid="tab-discount-codes">Discount Codes</TabsTrigger>
+            <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
             <TrainerRosterTable />
           </TabsContent>
 
-          <TabsContent value="revenue" className="mt-6 space-y-6">
+          <TabsContent value="client-experience" className="mt-6 space-y-8">
             <div>
               <h2 className="text-lg font-semibold mb-4">Revenue Overview</h2>
               <RevenueOverview />
@@ -186,64 +184,55 @@ export default function TrainerDashboard() {
               <h2 className="text-lg font-semibold mb-4">Client Statistics</h2>
               <ClientStats />
             </div>
-          </TabsContent>
-
-          <TabsContent value="programs" className="mt-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-semibold">Training Programs</h3>
-                <p className="text-sm text-muted-foreground">Create and manage your custom programs</p>
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Client Invitations</h2>
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Manage your direct client connections. Search for clients and send invitations to work together. 
+                  Free accounts can have up to 5 active clients.
+                </p>
               </div>
-              <Button
-                onClick={() => setLocation('/trainer/programs/new')}
-                data-testid="button-create-program"
-              >
-                Create New Program
-              </Button>
+              <TrainerInvitations />
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setLocation('/trainer/programs')}
-              className="w-full"
-              data-testid="button-view-all-programs"
-            >
-              View All Programs
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="exercises" className="mt-6">
-            {isLoadingUser ? (
-              <div className="text-center py-12 text-muted-foreground">
-                Loading...
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Discount Codes</h2>
+              <div className="mb-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Premium trainers can generate monthly 25% discount codes to attract new clients. 
+                  Share these codes for marketing and program sales.
+                </p>
               </div>
-            ) : user ? (
-              <CustomExerciseLibrary trainerId={user.id} />
-            ) : (
-              <div className="text-center py-12 text-destructive">
-                Error loading user information
+              <DiscountCodeManager />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="library" className="mt-6 space-y-8">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Training Programs</h2>
+                <Button
+                  onClick={() => setLocation('/trainer/programs/new')}
+                  data-testid="button-create-program"
+                >
+                  Create Program
+                </Button>
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="client-invitations" className="mt-6">
-            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                <strong>Client Invitations</strong> - Manage your direct client connections. 
-                Search for clients and send invitations to work together. 
-                Free accounts can have up to 5 active clients.
-              </p>
+              <TrainerProgramsGrid />
             </div>
-            <TrainerInvitations />
-          </TabsContent>
-
-          <TabsContent value="discount-codes" className="mt-6">
-            <div className="mb-4 p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                <strong>Discount Codes</strong> - Premium trainers can generate monthly 25% discount codes to attract new clients. 
-                Share these codes for marketing and program sales.
-              </p>
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Custom Exercises</h2>
+              {isLoadingUser ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Loading...
+                </div>
+              ) : user ? (
+                <CustomExerciseLibrary trainerId={user.id} />
+              ) : (
+                <div className="text-center py-12 text-destructive">
+                  Error loading user information
+                </div>
+              )}
             </div>
-            <DiscountCodeManager />
           </TabsContent>
         </Tabs>
       </div>
