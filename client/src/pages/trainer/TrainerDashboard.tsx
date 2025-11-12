@@ -94,7 +94,7 @@ export default function TrainerDashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setLocation('/settings')}
+                    onClick={() => setLocation('/trainer/settings')}
                     data-testid="button-upgrade-from-dashboard"
                   >
                     <Crown className="h-4 w-4 mr-1" />
@@ -118,7 +118,7 @@ export default function TrainerDashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setLocation('/settings')}
+                    onClick={() => setLocation('/trainer/settings')}
                     data-testid="button-upgrade-from-dashboard"
                   >
                     <Crown className="h-4 w-4 mr-1" />

@@ -9,14 +9,18 @@ Morphit is a science-backed fitness application that generates personalized work
 
 ## Recent Changes
 
-### November 12, 2025 - Trainer Workflow API Migration Complete
-- **Replaced TrainerDataContext with React Query**: All trainer components (ClientDetail, ClientProfile, ClientProgress, ClientWorkoutSessions) now fetch real data from API endpoints instead of mock context
-- **Fixed Critical API Bug**: Corrected storage.getActiveProgram → storage.getUserActiveProgram in routes.ts GET /api/trainer/clients/:id endpoint
-- **Added Missing Endpoint**: Implemented GET /api/workout-sessions/:sessionId with client/trainer authorization for fetching individual session details (required for trainer notes persistence)
-- **Fixed Client ID Routing**: Updated useMergedClientData hook to use real client IDs (user-sarah-001, etc.) instead of mock IDs (client-1, etc.) by matching emails and overriding mock IDs
-- **Updated Mock Data**: Aligned mock client emails with seed data (sarah.johnson@example.com, mike.chen@example.com, jessica.rodriguez@example.com) to enable proper ID mapping
-- **Added Defensive Defaults**: ClientDetail now provides fallback values for null/undefined profile fields (fitnessLevel, equipmentAccess, etc.) preventing render crashes
-- **End-to-End Verification**: Trainer workflow tested successfully - roster navigation, client details, all tabs, trainer notes persistence all working with real APIs
+### November 12, 2025 - Trainer Settings & Support System Complete
+- **Trainer Settings Page**: Created comprehensive TrainerSettings page accessible from dashboard with 5 tabs:
+  - Profile: Read-only trainer info (name, username, email, bio, specialties, years of experience)
+  - Subscription: Shows Free/Premium status, client count limits (5 free, unlimited premium), upgrade button
+  - Support: Request form with category dropdown (Technical Issue, Billing, Feature Request, General Question) and message field, displays all past support requests with timestamps and statuses
+  - FAQ: 6 collapsible questions covering programs, clients, exercises, subscriptions, invites, billing
+  - Getting Started: 4-step guide for new trainers (complete profile, create custom exercises, build first program, invite clients)
+- **Database Tables Added**: Created support_requests and exercise_requests tables for trainer-developer communication
+- **API Endpoints**: Implemented POST /api/trainer/support-requests and POST /api/trainer/exercise-requests for submitting requests
+- **Custom Exercise Enhancement**: Added "Request to Add to Master DB" button in CustomExerciseLibrary allowing trainers to submit their custom exercises for inclusion in Morphit's master database with justification text
+- **Dashboard Improvements**: Added Settings icon button to trainer dashboard header, removed non-existent totalUnreadMessages references from alert summary cards
+- **Data Integrity**: Removed DELETE endpoint for trainer custom exercises to maintain program integrity (trainers can edit but not delete)
 
 ## System Architecture
 
