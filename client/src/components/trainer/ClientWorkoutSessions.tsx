@@ -122,7 +122,7 @@ export function ClientWorkoutSessions({ clientId }: ClientWorkoutSessionsProps) 
       <div className="grid gap-4">
         {sessions.map((session) => {
           const isExpanded = expandedSessionId === session.id;
-          const isCompleted = session.status === 'completed';
+          const isCompleted = session.status === 'complete';
           const scheduledDate = session.scheduledDate ? new Date(session.scheduledDate) : new Date(session.sessionDate);
           
           return (

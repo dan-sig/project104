@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Clock, CheckCircle2, FileText, Flame } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ArrowLeft, Calendar, Clock, CheckCircle2, FileText, Flame, NotebookPen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import type { WorkoutSession } from "@shared/schema";
@@ -145,6 +146,23 @@ export default function WorkoutHistory({ onBack }: WorkoutHistoryProps) {
                 </div>
               )}
             </div>
+
+            {/* Trainer Post-Session Review */}
+            {session.trainerPostSessionReview && session.trainerPostSessionReview.trim() !== '' && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-start gap-2">
+                  <NotebookPen className="h-4 w-4 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Trainer Review</p>
+                    <ScrollArea className="max-h-24">
+                      <p className="text-sm whitespace-pre-wrap" data-testid={`text-trainer-post-session-review-${session.id}`}>
+                        {session.trainerPostSessionReview}
+                      </p>
+                    </ScrollArea>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         ))}
         

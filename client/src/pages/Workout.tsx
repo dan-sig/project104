@@ -21,7 +21,8 @@ import CardioWorkoutSession, { CardioSummary } from "@/components/CardioWorkoutS
 import type { WorkoutSession as WorkoutSessionType, User, WorkoutProgram, FitnessAssessment } from "@shared/schema";
 import { parseLocalDate, isSameCalendarDay, getTodayLocal } from "@shared/dateUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle2, NotebookPen } from "lucide-react";
 
 interface WorkoutPageProps {
   onComplete: (summary: WorkoutSummary | CardioSummary) => void;
@@ -102,16 +103,45 @@ export default function WorkoutPage({ onComplete }: WorkoutPageProps) {
   // Check if this is a cardio session
   const isCardioSession = todaySession?.workoutType === "cardio";
 
-  if (isCardioSession) {
-    return (
-      <CardioWorkoutSession
-        sessionId={todaySession.id}
-        onComplete={onComplete as (summary: CardioSummary) => void}
-        user={user}
-      />
-    );
-  }
+  // Trainer pre-session notes component
+  const TrainerNotesCard = () => {
+    const notes = todaySession?.trainerPreSessionNotes;
+    if (!notes || notes.trim() === '') return null;
 
-  // Default to regular workout session
-  return <WorkoutSession onComplete={onComplete as (summary: WorkoutSummary) => void} />;
+    return (
+      <Card data-testid="card-trainer-pre-session-notes">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <NotebookPen className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">Note from Your Trainer</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="max-h-32">
+            <p className="text-sm whitespace-pre-wrap" data-testid="text-trainer-pre-session-notes">
+              {notes}
+            </p>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Shared layout wrapper for both workout types
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto space-y-4 p-6">
+        <TrainerNotesCard />
+        {isCardioSession ? (
+          <CardioWorkoutSession
+            sessionId={todaySession.id}
+            onComplete={onComplete as (summary: CardioSummary) => void}
+            user={user}
+          />
+        ) : (
+          <WorkoutSession onComplete={onComplete as (summary: WorkoutSummary) => void} />
+        )}
+      </div>
+    </div>
+  );
 }
