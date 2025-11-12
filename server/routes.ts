@@ -5111,7 +5111,7 @@ Provide a helpful, motivating response that addresses their question using this 
       }
 
       // Verify the program belongs to this trainer
-      const program = await storage.getTrainerProgramById(programId);
+      const program = await storage.getTrainerProgram(programId);
       if (!program || program.trainerId !== trainerId) {
         return res.status(403).json({ error: "Program not found or does not belong to you" });
       }
