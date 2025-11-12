@@ -190,6 +190,22 @@ export interface IStorage {
   
   createExerciseRequest(request: any): Promise<any>;
   getTrainerExerciseRequests(trainerId: string): Promise<any[]>;
+  
+  getInactiveClients(trainerId: string, daysSinceLastWorkout: number): Promise<Array<{
+    clientId: string;
+    clientName: string;
+    clientEmail: string;
+    lastWorkoutDate: string | null;
+    daysSinceWorkout: number;
+  }>>;
+  getPendingInvitesCounts(trainerId: string): Promise<{ sent: number; received: number }>;
+  getWorkoutsMissingNotes(trainerId: string): Promise<Array<{
+    workoutId: string;
+    clientId: string;
+    clientName: string;
+    scheduledDate: string;
+    noteType: 'pre-session' | 'post-session';
+  }>>;
 }
 
 
@@ -217,7 +233,7 @@ import {
   supportRequests,
   exerciseRequests,
 } from "@shared/schema";
-import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, gte, lte, or, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 // ==========================================
@@ -1442,6 +1458,178 @@ export class DbStorage implements IStorage {
     return db.select().from(exerciseRequests)
       .where(eq(exerciseRequests.trainerId, trainerId))
       .orderBy(desc(exerciseRequests.createdAt));
+  }
+
+  // ==========================================
+  // TRAINER ALERT OPERATIONS
+  // ==========================================
+  async getInactiveClients(trainerId: string, daysSinceLastWorkout: number = 7): Promise<Array<{
+    clientId: string;
+    clientName: string;
+    clientEmail: string;
+    lastWorkoutDate: string | null;
+    daysSinceWorkout: number;
+  }>> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysSinceLastWorkout);
+    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+    const results = await db
+      .select({
+        clientId: trainerClients.clientId,
+        clientFirstName: users.firstName,
+        clientLastName: users.lastName,
+        clientEmail: users.email,
+        lastCompletedDate: sql<string | null>`
+          (SELECT MAX(ws.scheduled_date) 
+           FROM ${workoutSessions} ws 
+           WHERE ws.user_id = ${trainerClients.clientId} 
+           AND ws.status = 'complete')
+        `,
+      })
+      .from(trainerClients)
+      .innerJoin(users, eq(trainerClients.clientId, users.id))
+      .where(
+        and(
+          eq(trainerClients.trainerId, trainerId),
+          eq(trainerClients.status, 'active')
+        )
+      );
+
+    return results
+      .filter(r => {
+        if (!r.lastCompletedDate) return true; // Never worked out
+        return r.lastCompletedDate < cutoffStr;
+      })
+      .map(r => {
+        const daysSince = r.lastCompletedDate 
+          ? Math.floor((Date.now() - new Date(r.lastCompletedDate).getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+        
+        return {
+          clientId: r.clientId,
+          clientName: `${r.clientFirstName} ${r.clientLastName}`,
+          clientEmail: r.clientEmail || 'N/A',
+          lastWorkoutDate: r.lastCompletedDate,
+          daysSinceWorkout: daysSince,
+        };
+      });
+  }
+
+  async getPendingInvitesCounts(trainerId: string): Promise<{ sent: number; received: number }> {
+    const sentResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(trainerClientInvites)
+      .where(
+        and(
+          eq(trainerClientInvites.trainerId, trainerId),
+          eq(trainerClientInvites.status, 'pending')
+        )
+      );
+
+    const receivedResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(trainerClientInvites)
+      .where(
+        and(
+          eq(trainerClientInvites.clientId, trainerId),
+          eq(trainerClientInvites.status, 'pending')
+        )
+      );
+
+    return {
+      sent: sentResult[0]?.count || 0,
+      received: receivedResult[0]?.count || 0,
+    };
+  }
+
+  async getWorkoutsMissingNotes(trainerId: string): Promise<Array<{
+    workoutId: string;
+    clientId: string;
+    clientName: string;
+    scheduledDate: string;
+    noteType: 'pre-session' | 'post-session';
+  }>> {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get upcoming workouts (next 3 days) missing pre-session notes
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+
+    const upcomingMissingPreNotes = await db
+      .select({
+        workoutId: workoutSessions.id,
+        clientId: trainerClients.clientId,
+        clientFirstName: users.firstName,
+        clientLastName: users.lastName,
+        scheduledDate: workoutSessions.scheduledDate,
+      })
+      .from(workoutSessions)
+      .innerJoin(trainerClients, eq(workoutSessions.userId, trainerClients.clientId))
+      .innerJoin(users, eq(trainerClients.clientId, users.id))
+      .where(
+        and(
+          eq(trainerClients.trainerId, trainerId),
+          eq(trainerClients.status, 'active'),
+          gte(workoutSessions.scheduledDate, today),
+          lte(workoutSessions.scheduledDate, futureDateStr),
+          eq(workoutSessions.status, 'scheduled'),
+          or(
+            isNull(workoutSessions.trainerPreSessionNotes),
+            eq(workoutSessions.trainerPreSessionNotes, '')
+          )
+        )
+      );
+
+    // Get completed workouts (last 7 days) missing post-session reviews
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 7);
+    const pastDateStr = pastDate.toISOString().split('T')[0];
+
+    const completedMissingPostNotes = await db
+      .select({
+        workoutId: workoutSessions.id,
+        clientId: trainerClients.clientId,
+        clientFirstName: users.firstName,
+        clientLastName: users.lastName,
+        scheduledDate: workoutSessions.scheduledDate,
+      })
+      .from(workoutSessions)
+      .innerJoin(trainerClients, eq(workoutSessions.userId, trainerClients.clientId))
+      .innerJoin(users, eq(trainerClients.clientId, users.id))
+      .where(
+        and(
+          eq(trainerClients.trainerId, trainerId),
+          eq(trainerClients.status, 'active'),
+          gte(workoutSessions.scheduledDate, pastDateStr),
+          lte(workoutSessions.scheduledDate, today),
+          eq(workoutSessions.status, 'complete'),
+          or(
+            isNull(workoutSessions.trainerPostSessionReview),
+            eq(workoutSessions.trainerPostSessionReview, '')
+          )
+        )
+      );
+
+    const results = [
+      ...upcomingMissingPreNotes.map(r => ({
+        workoutId: r.workoutId,
+        clientId: r.clientId,
+        clientName: `${r.clientFirstName} ${r.clientLastName}`,
+        scheduledDate: r.scheduledDate || '',
+        noteType: 'pre-session' as const,
+      })),
+      ...completedMissingPostNotes.map(r => ({
+        workoutId: r.workoutId,
+        clientId: r.clientId,
+        clientName: `${r.clientFirstName} ${r.clientLastName}`,
+        scheduledDate: r.scheduledDate || '',
+        noteType: 'post-session' as const,
+      })),
+    ];
+
+    return results;
   }
 }
 
