@@ -9,6 +9,21 @@ Morphit is a science-backed fitness application that generates personalized work
 
 ## Recent Changes
 
+### November 12, 2025 - Real-Time Trainer Alert System
+- **Complete Mock Data Removal**: Eliminated all mock client data (deleted trainerMockData.ts, removed TrainerDataContext.tsx references from ExerciseEditorDrawer and WorkoutDetail)
+- **Real Alert System**: Replaced mock totalAlerts banner with individual alert cards using live database queries
+  - Backend storage methods: getInactiveClients (7+ days no workout), getPendingInvitesCounts, getWorkoutsMissingNotes
+  - API endpoints: GET /api/trainer/alerts/summary (returns counts), GET /api/trainer/alerts/detail (returns affected client lists)
+  - Alert cards: Inactive Clients (yellow), Pending Invites (blue) with real-time counts and "View" actions
+- **Client Roster Filtering**: Enhanced TrainerRosterTable to support alert-based filtering
+  - Accepts filterType prop ('inactive' | null) to filter and highlight affected clients
+  - Shows active filter badge and "Clear" button for better UX
+  - Auto-clears filter when switching tabs
+  - Loading state while fetching filtered data
+- **Hook Consolidation**: Replaced useMergedClientData with useTrainerClients hook that uses only real database queries via /api/trainer/clients
+- **Navigation Flow**: Alert card "View" buttons set filter and switch to Clients tab, displaying highlighted rows for quick identification
+- **Testing**: End-to-end tests confirm alert cards display correct counts, filtering works, navigation functions properly, and all mock data references removed
+
 ### November 12, 2025 - Trainer Dashboard Tab Consolidation
 - **Simplified Navigation**: Consolidated trainer dashboard from 6 tabs down to 3 streamlined tabs:
   - **Clients** (previously "Client Roster"): Client roster table with active/inactive clients
