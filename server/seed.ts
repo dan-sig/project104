@@ -324,11 +324,46 @@ export async function seedDatabase() {
     let program3: any;
     
     if (existingPrograms.length > 0) {
-      console.log(`[SEED] Programs already exist (${existingPrograms.length} found), skipping program creation`);
-      // Use existing programs for purchases
-      program1 = existingPrograms.find(p => p.name === 'Flow');
-      program2 = existingPrograms.find(p => p.name === 'Build');
-      program3 = existingPrograms.find(p => p.name === 'Strong');
+      console.log(`[SEED] Programs already exist (${existingPrograms.length} found), updating to Morphit cycle names`);
+      
+      // Find programs by old names and update them
+      const oldProgram1 = existingPrograms.find(p => p.name === 'Upper Body Power Builder' || p.name === 'Flow');
+      const oldProgram2 = existingPrograms.find(p => p.name === 'Functional Movement Mastery' || p.name === 'Build');
+      const oldProgram3 = existingPrograms.find(p => p.name === 'Beginner Strength Foundation' || p.name === 'Strong');
+      
+      if (oldProgram1 && oldProgram1.name !== 'Flow') {
+        await storage.updateTrainerProgram(oldProgram1.id, {
+          name: 'Flow',
+          description: 'Mobility-focused program emphasizing movement quality, flexibility, and body control. Perfect for recovery and building a solid foundation.',
+          difficulty: 'beginner',
+          daysPerWeek: 3,
+        });
+        console.log('[SEED] Updated program to "Flow"');
+      }
+      
+      if (oldProgram2 && oldProgram2.name !== 'Build') {
+        await storage.updateTrainerProgram(oldProgram2.id, {
+          name: 'Build',
+          description: 'Hypertrophy-focused program designed to build muscle mass through progressive overload and volume training.',
+          difficulty: 'intermediate',
+          daysPerWeek: 4,
+        });
+        console.log('[SEED] Updated program to "Build"');
+      }
+      
+      if (oldProgram3 && oldProgram3.name !== 'Strong') {
+        await storage.updateTrainerProgram(oldProgram3.id, {
+          name: 'Strong',
+          description: 'Strength-focused program using heavy compound movements and progressive loading to maximize force production and power.',
+          difficulty: 'advanced',
+          daysPerWeek: 4,
+        });
+        console.log('[SEED] Updated program to "Strong"');
+      }
+      
+      program1 = oldProgram1 || existingPrograms.find(p => p.name === 'Flow');
+      program2 = oldProgram2 || existingPrograms.find(p => p.name === 'Build');
+      program3 = oldProgram3 || existingPrograms.find(p => p.name === 'Strong');
     } else {
     
     // Program 1: Flow
