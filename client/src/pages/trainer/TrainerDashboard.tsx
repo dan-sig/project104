@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMergedClientData } from "@/hooks/useMergedClientData";
 import { usePendingInvitesCount } from "@/hooks/usePendingInvitesCount";
 import type { User, TrainerProfile } from "@shared/schema";
-import { AlertTriangle, MessageCircle, Users, Crown } from "lucide-react";
+import { AlertTriangle, Users, Crown, Settings } from "lucide-react";
 
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
@@ -51,23 +51,33 @@ export default function TrainerDashboard() {
               <h1 className="text-2xl font-bold" data-testid="text-trainer-dashboard-title">Trainer Dashboard</h1>
               <p className="text-sm text-muted-foreground">Manage your clients and their programs</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                sessionStorage.removeItem('userRole');
-                setLocation('/');
-              }}
-              data-testid="button-logout"
-            >
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation('/trainer/settings')}
+                data-testid="button-settings"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  sessionStorage.removeItem('userRole');
+                  setLocation('/');
+                }}
+                data-testid="button-logout"
+              >
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* Alert Summary Cards */}
-        {!isLoadingClients && !isLoadingProfile && (stats.totalAlerts > 0 || stats.totalUnreadMessages > 0 || isNearLimit || isOverLimit) && (
+        {!isLoadingClients && !isLoadingProfile && (stats.totalAlerts > 0 || isNearLimit || isOverLimit) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {isOverLimit && (
               <Card className="bg-orange-500/10 border-orange-500/20">
@@ -132,27 +142,6 @@ export default function TrainerDashboard() {
                     size="sm"
                     onClick={() => setActiveTab("clients")}
                     data-testid="button-view-alerts"
-                  >
-                    View
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-            {stats.totalUnreadMessages > 0 && (
-              <Card className="bg-primary/10 border-primary/20">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <MessageCircle className="h-5 w-5 text-primary flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-medium" data-testid="text-total-messages">
-                      {stats.totalUnreadMessages} unread message{stats.totalUnreadMessages !== 1 ? 's' : ''}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Respond to your clients</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab("clients")}
-                    data-testid="button-view-messages"
                   >
                     View
                   </Button>

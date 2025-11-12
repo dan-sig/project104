@@ -40,6 +40,7 @@ import HowItWorks from "./pages/HowItWorks";
 import SmartProgression from "./pages/SmartProgression";
 import TrainerDashboard from "./pages/trainer/TrainerDashboard";
 import TrainerOnboarding from "./pages/trainer/TrainerOnboarding";
+import TrainerSettings from "./pages/trainer/TrainerSettings";
 import ClientDetail from "./pages/trainer/ClientDetail";
 import ProgramBuilder from "./pages/trainer/ProgramBuilder";
 import TrainerProgramsList from "./pages/trainer/TrainerProgramsList";
@@ -484,6 +485,12 @@ function AppRoutes() {
 
           <Route path="/trainer/onboarding">
             <TrainerOnboarding />
+          </Route>
+
+          <Route path="/trainer/settings">
+            <TrainerOnboardingGate>
+              <TrainerSettings />
+            </TrainerOnboardingGate>
           </Route>
 
           <Route path="/trainer/programs/new">

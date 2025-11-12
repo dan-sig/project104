@@ -4,8 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, Edit, ExternalLink, Dumbbell } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, Edit, ExternalLink, Dumbbell, Upload } from "lucide-react";
 import { CustomExerciseDrawer } from "./CustomExerciseDrawer";
 import type { TrainerCustomExercise, InsertTrainerCustomExercise } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -19,6 +30,8 @@ export function CustomExerciseLibrary({ trainerId }: CustomExerciseLibraryProps)
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<TrainerCustomExercise | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [requestingExercise, setRequestingExercise] = useState<TrainerCustomExercise | null>(null);
+  const [justification, setJustification] = useState("");
   const { toast } = useToast();
 
   const { data: exercises = [], isLoading, isError } = useQuery<TrainerCustomExercise[]>({
@@ -81,6 +94,30 @@ export function CustomExerciseLibrary({ trainerId }: CustomExerciseLibraryProps)
     },
   });
 
+  const requestMasterDbMutation = useMutation({
+    mutationFn: async (data: { customExerciseId: string; exerciseName: string; justification: string }) => {
+      return apiRequest("/api/trainer/exercise-requests", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Request submitted",
+        description: "Your exercise has been submitted for review. We'll notify you when it's reviewed.",
+      });
+      setRequestingExercise(null);
+      setJustification("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to submit request. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = async (data: InsertTrainerCustomExercise) => {
     try {
       if (editingExercise) {
@@ -103,6 +140,21 @@ export function CustomExerciseLibrary({ trainerId }: CustomExerciseLibraryProps)
   const handleCreate = () => {
     setEditingExercise(null);
     setDrawerOpen(true);
+  };
+
+  const handleRequestMasterDb = (exercise: TrainerCustomExercise) => {
+    setRequestingExercise(exercise);
+    setJustification("");
+  };
+
+  const handleSubmitRequest = () => {
+    if (!requestingExercise) return;
+    
+    requestMasterDbMutation.mutate({
+      customExerciseId: requestingExercise.id,
+      exerciseName: requestingExercise.name,
+      justification,
+    });
   };
 
   const filteredExercises = exercises.filter((ex) =>
@@ -184,14 +236,24 @@ export function CustomExerciseLibrary({ trainerId }: CustomExerciseLibraryProps)
                               </CardDescription>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(exercise)}
-                            data-testid={`button-edit-exercise-${exercise.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRequestMasterDb(exercise)}
+                              data-testid={`button-request-master-${exercise.id}`}
+                            >
+                              <Upload className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(exercise)}
+                              data-testid={`button-edit-exercise-${exercise.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -280,6 +342,44 @@ export function CustomExerciseLibrary({ trainerId }: CustomExerciseLibraryProps)
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!requestingExercise} onOpenChange={(open) => !open && setRequestingExercise(null)}>
+        <AlertDialogContent data-testid="dialog-request-master">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Request to Add Exercise to Master Database</AlertDialogTitle>
+            <AlertDialogDescription>
+              Submit a request to have this exercise reviewed and potentially added to Morphit's master exercise database. This allows all users to benefit from your exercise.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-2">
+            <label htmlFor="justification" className="text-sm font-medium">
+              Justification
+            </label>
+            <Textarea
+              id="justification"
+              placeholder="Explain why this exercise should be added to the master database..."
+              value={justification}
+              onChange={(e) => setJustification(e.target.value)}
+              rows={4}
+              data-testid="textarea-justification"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRequestingExercise(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSubmitRequest}
+              disabled={!justification.trim() || requestMasterDbMutation.isPending}
+              data-testid="button-submit-request"
+            >
+              {requestMasterDbMutation.isPending ? "Submitting..." : "Submit Request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CustomExerciseDrawer
         open={drawerOpen}
