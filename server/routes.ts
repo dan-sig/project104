@@ -3745,6 +3745,102 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // Helper function to calculate current workout streak
+  function calculateCurrentStreak(completedSessions: any[]): number {
+    if (completedSessions.length === 0) return 0;
+    
+    // Sort by date descending
+    const sorted = [...completedSessions].sort((a, b) => {
+      const dateA = new Date(a.scheduledDate || a.sessionDate);
+      const dateB = new Date(b.scheduledDate || b.sessionDate);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (const session of sorted) {
+      const sessionDate = new Date(session.scheduledDate || session.sessionDate);
+      sessionDate.setHours(0, 0, 0, 0);
+      
+      const daysDiff = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // If session is today or yesterday (allowing for streak continuation)
+      if (daysDiff === streak || daysDiff === streak + 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
+  // GET /api/trainer/clients/:id - Get individual client details for trainer
+  app.get("/api/trainer/clients/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { id: clientId } = req.params;
+
+      // Verify trainer has active connection to this client
+      const connection = await storage.getTrainerClientConnection(trainerId, clientId);
+      if (!connection) {
+        return res.status(403).json({ error: "Not authorized to view this client" });
+      }
+
+      // Fetch client user profile
+      const user = await storage.getUser(clientId);
+      if (!user) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Fetch client's active program
+      const activeProgram = await storage.getActiveProgram(clientId);
+
+      // Fetch client's fitness assessments
+      const fitnessAssessments = await storage.getUserFitnessAssessments(clientId);
+
+      // Fetch recent workout sessions (last 10)
+      const allSessions = await storage.getUserSessions(clientId);
+      const recentSessions = allSessions.slice(0, 10);
+
+      // Calculate client stats
+      const completedSessions = allSessions.filter(s => s.status === 'complete');
+      const totalWorkouts = completedSessions.length;
+      const currentStreak = calculateCurrentStreak(completedSessions);
+
+      // Construct client detail response
+      const clientDetail = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        fitnessLevel: user.fitnessLevel,
+        primaryGoal: user.primaryGoal,
+        nutritionGoal: user.nutritionGoal,
+        equipmentAccess: user.equipmentAccess,
+        weeklyWorkoutDays: user.weeklyWorkoutDays,
+        preferredDuration: user.preferredDuration,
+        unitPreference: user.unitPreference,
+        connectionDate: connection.addedDate?.toISOString() || new Date().toISOString(),
+        status: connection.status,
+        activeProgram: activeProgram || null,
+        fitnessAssessments: fitnessAssessments || [],
+        recentSessions,
+        stats: {
+          totalWorkouts,
+          currentStreak,
+        },
+      };
+
+      res.json(clientDetail);
+    } catch (error) {
+      console.error("Error fetching client details:", error);
+      res.status(500).json({ error: "Failed to fetch client details" });
+    }
+  });
+
   // GET /api/trainer/clients/:clientId/sessions - Get client's workout sessions for trainer
   app.get("/api/trainer/clients/:clientId/sessions", isAuthenticated, async (req: any, res: Response) => {
     try {

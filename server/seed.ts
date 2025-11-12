@@ -688,6 +688,7 @@ export async function seedDatabase() {
         trainerEarnings: purchase1Price * 0.80,
         pricingType: 'one_time',
         status: 'completed',
+        isAssigned: 0,
       });
 
       await storage.createTrainerClient({
@@ -707,6 +708,7 @@ export async function seedDatabase() {
         trainerEarnings: purchase2Price * 0.80,
         pricingType: 'subscription',
         status: 'completed',
+        isAssigned: 0,
       });
 
       await storage.createTrainerClient({
@@ -725,6 +727,7 @@ export async function seedDatabase() {
         trainerEarnings: purchase2Price * 0.80,
         pricingType: 'subscription',
         status: 'completed',
+        isAssigned: 0,
       });
 
       await storage.createTrainerClient({
@@ -734,6 +737,95 @@ export async function seedDatabase() {
       });
 
       console.log('[SEED] Created 3 trainer-client connections with program purchases');
+    }
+
+    // Update client profiles with realistic fitness data
+    console.log('[SEED] Updating client profiles with fitness data...');
+    
+    await storage.updateUser(CLIENT_IDS.SARAH, {
+      fitnessLevel: 'beginner',
+      equipment: ['bodyweight', 'dumbbells', 'resistance_bands'],
+      daysPerWeek: 4,
+      workoutDuration: 45,
+      unitPreference: 'imperial',
+      focusCycle: 'flow',
+    });
+
+    await storage.updateUser(CLIENT_IDS.MIKE, {
+      fitnessLevel: 'intermediate',
+      equipment: ['barbell', 'dumbbells', 'bench', 'squat_rack', 'pull_up_bar', 'kettlebells'],
+      daysPerWeek: 5,
+      workoutDuration: 60,
+      unitPreference: 'imperial',
+      focusCycle: 'strong',
+    });
+
+    await storage.updateUser(CLIENT_IDS.JESSICA, {
+      fitnessLevel: 'advanced',
+      equipment: ['bodyweight', 'dumbbells', 'pull_up_bar'],
+      daysPerWeek: 6,
+      workoutDuration: 75,
+      unitPreference: 'metric',
+      focusCycle: 'build',
+    });
+
+    console.log('[SEED] Updated 3 client profiles');
+
+    // Create fitness assessments for clients
+    console.log('[SEED] Creating fitness assessments...');
+    
+    const existingAssessments = await storage.getUserFitnessAssessments(CLIENT_IDS.SARAH);
+    if (existingAssessments.length === 0) {
+      // Sarah's assessment (beginner level - bodyweight)
+      await storage.createFitnessAssessment({
+        userId: CLIENT_IDS.SARAH,
+        experienceLevel: 'beginner',
+        pushups: 8,
+        pikePushups: 3,
+        pullups: 0,
+        squats: 15,
+        walkingLunges: 10,
+        singleLegRdl: 12,
+        plankHold: 30,
+      });
+
+      // Mike's assessment (intermediate with weights)
+      await storage.createFitnessAssessment({
+        userId: CLIENT_IDS.MIKE,
+        experienceLevel: 'intermediate',
+        pushups: 25,
+        pikePushups: 12,
+        pullups: 8,
+        squats: 30,
+        walkingLunges: 20,
+        singleLegRdl: 15,
+        plankHold: 90,
+        squat1rm: 225,
+        deadlift1rm: 245,
+        benchPress1rm: 185,
+        overheadPress1rm: 95,
+        barbellRow1rm: 135,
+        dumbbellLunge1rm: 50,
+        farmersCarry1rm: 100,
+      });
+
+      // Jessica's assessment (advanced bodyweight/hybrid)
+      await storage.createFitnessAssessment({
+        userId: CLIENT_IDS.JESSICA,
+        experienceLevel: 'advanced',
+        pushups: 40,
+        pikePushups: 20,
+        pullups: 15,
+        squats: 50,
+        walkingLunges: 30,
+        singleLegRdl: 25,
+        plankHold: 180,
+        mileTime: 7.5,
+      });
+
+      console.log('[SEED] Created 3 fitness assessments');
+    } else {
+      console.log('[SEED] Fitness assessments already exist, skipping');
     }
 
     // Create bidirectional trainer-client invitations
