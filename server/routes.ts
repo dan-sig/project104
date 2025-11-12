@@ -4083,6 +4083,29 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // GET /api/trainer/alerts/:clientId - Get detailed alerts for a specific client
+  app.get("/api/trainer/alerts/:clientId", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { clientId } = req.params;
+
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID is required" });
+      }
+
+      const alertDetail = await storage.getClientAlertDetail(trainerId, clientId);
+      
+      if (!alertDetail) {
+        return res.status(404).json({ error: "Client not found or access denied" });
+      }
+
+      res.json(alertDetail);
+    } catch (error) {
+      console.error("Error fetching client alert detail:", error);
+      res.status(500).json({ error: "Failed to fetch client alert detail" });
+    }
+  });
+
   // GET /api/trainer/alerts/detail?type={type} - Get detailed alert information
   app.get("/api/trainer/alerts/detail", isAuthenticated, async (req: any, res: Response) => {
     try {

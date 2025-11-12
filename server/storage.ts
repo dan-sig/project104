@@ -215,6 +215,21 @@ export interface IStorage {
     };
     total: number;
   }>>;
+  getClientAlertDetail(trainerId: string, clientId: string): Promise<{
+    inactiveStatus: {
+      isInactive: boolean;
+      daysSinceWorkout: number;
+      lastWorkoutDate: string | null;
+    };
+    missingPreNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+    missingPostNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+  } | null>;
   
   getUserWorkoutStreak(userId: string): Promise<number>;
   getUnreadTrainerNotes(userId: string): Promise<number>;
@@ -1702,6 +1717,71 @@ export class DbStorage implements IStorage {
         total: isInactive + noteCounts.preNotes + noteCounts.postNotes,
       };
     });
+  }
+
+  async getClientAlertDetail(trainerId: string, clientId: string): Promise<{
+    inactiveStatus: {
+      isInactive: boolean;
+      daysSinceWorkout: number;
+      lastWorkoutDate: string | null;
+    };
+    missingPreNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+    missingPostNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+  } | null> {
+    // Verify trainer-client relationship
+    const connection = await db
+      .select()
+      .from(trainerClients)
+      .where(
+        and(
+          eq(trainerClients.trainerId, trainerId),
+          eq(trainerClients.clientId, clientId),
+          eq(trainerClients.status, 'active')
+        )
+      )
+      .limit(1);
+    
+    if (connection.length === 0) {
+      return null; // Not authorized or connection doesn't exist
+    }
+
+    // Get inactive status
+    const inactiveClients = await this.getInactiveClients(trainerId, 7);
+    const inactiveClient = inactiveClients.find(c => c.clientId === clientId);
+    
+    // Get all workouts missing notes for this client
+    const allMissingNotes = await this.getWorkoutsMissingNotes(trainerId);
+    const clientMissingNotes = allMissingNotes.filter(w => w.clientId === clientId);
+    
+    const missingPreNotes = clientMissingNotes
+      .filter(w => w.noteType === 'pre-session')
+      .map(w => ({
+        workoutId: w.workoutId,
+        scheduledDate: w.scheduledDate,
+      }));
+    
+    const missingPostNotes = clientMissingNotes
+      .filter(w => w.noteType === 'post-session')
+      .map(w => ({
+        workoutId: w.workoutId,
+        scheduledDate: w.scheduledDate,
+      }));
+    
+    return {
+      inactiveStatus: {
+        isInactive: !!inactiveClient,
+        daysSinceWorkout: inactiveClient?.daysSinceWorkout || 0,
+        lastWorkoutDate: inactiveClient?.lastWorkoutDate || null,
+      },
+      missingPreNotes,
+      missingPostNotes,
+    };
   }
 
   // ==========================================

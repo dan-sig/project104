@@ -52,6 +52,42 @@ export default function ClientDetail() {
     enabled: !!clientId,
   });
 
+  // Fetch per-client alert counts
+  const { data: perClientAlerts } = useQuery<Array<{
+    clientId: string;
+    counts: {
+      inactive: number;
+      missingPreNotes: number;
+      missingPostNotes: number;
+    };
+    total: number;
+  }>>({
+    queryKey: ["/api/trainer/alerts/per-client"],
+  });
+
+  // Fetch detailed alerts for this specific client
+  const { data: clientAlerts, isLoading: isLoadingAlerts } = useQuery<{
+    inactiveStatus: {
+      isInactive: boolean;
+      daysSinceWorkout: number;
+      lastWorkoutDate: string | null;
+    };
+    missingPreNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+    missingPostNotes: Array<{
+      workoutId: string;
+      scheduledDate: string;
+    }>;
+  }>({
+    queryKey: [`/api/trainer/alerts/${clientId}`],
+    enabled: !!clientId,
+  });
+
+  // Get alert count for this client
+  const alertCount = perClientAlerts?.find(a => a.clientId === clientId)?.total || 0;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -137,9 +173,28 @@ export default function ClientDetail() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
 
+        {/* Alerts Summary Banner */}
+        {alertCount > 0 && (
+          <Card className="mb-6 border-yellow-500/20 bg-yellow-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <div>
+                  <p className="font-medium text-sm">
+                    {alertCount} {alertCount === 1 ? 'Alert' : 'Alerts'} Requiring Attention
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Click the Alerts tab below to view details
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-client-detail">
+          <TabsList className="grid w-full grid-cols-5" data-testid="tabs-client-detail">
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -155,6 +210,18 @@ export default function ClientDetail() {
             <TabsTrigger value="program" data-testid="tab-program">
               <Dumbbell className="h-4 w-4 mr-2" />
               Program
+            </TabsTrigger>
+            <TabsTrigger value="alerts" data-testid="tab-alerts" className="relative">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Alerts
+              {alertCount > 0 && (
+                <Badge 
+                  variant="secondary" 
+                  className="ml-2 h-5 min-w-5 px-1 text-xs bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20"
+                >
+                  {alertCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -173,6 +240,14 @@ export default function ClientDetail() {
 
             <TabsContent value="program">
               <ClientProgram clientId={client.id} />
+            </TabsContent>
+
+            <TabsContent value="alerts">
+              <ClientAlerts 
+                clientId={client.id}
+                alertData={clientAlerts}
+                isLoading={isLoadingAlerts}
+              />
             </TabsContent>
           </div>
         </Tabs>
