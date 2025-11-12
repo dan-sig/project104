@@ -295,6 +295,8 @@ export const workoutSessions = pgTable("workout_sessions", {
   elapsedSeconds: integer("elapsed_seconds"), // Tracks timer state for partial workouts
   caloriesBurned: integer("calories_burned"),
   notes: text("notes"),
+  trainerPreSessionNotes: text("trainer_pre_session_notes"),
+  trainerPostSessionReview: text("trainer_post_session_review"),
   isArchived: integer("is_archived").notNull().default(0),
 }, (table) => ({
   // Ensure only one active session per user per date (prevents duplicates)
@@ -332,6 +334,8 @@ export const patchWorkoutSessionSchema = z.object({
   workoutType: z.enum(["strength", "cardio", "hiit", "mobility"]).optional(),
   durationMinutes: z.number().optional(),
   caloriesBurned: z.number().optional(),
+  trainerPreSessionNotes: z.string().optional(),
+  trainerPostSessionReview: z.string().optional(),
   notes: z.string().optional(),
   sessionDate: z.coerce.date().optional(), // Coerce ISO strings from client to Date
 });
