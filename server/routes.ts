@@ -4710,6 +4710,149 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // ==========================================
+  // PROGRAM REVIEW ROUTES
+  // ==========================================
+
+  // POST /api/programs/:id/reviews - Create a review for a program
+  app.post("/api/programs/:id/reviews", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: programId } = req.params;
+      const { rating, reviewText } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      }
+
+      const canReview = await storage.canUserReviewProgram(userId, programId);
+      if (!canReview) {
+        return res.status(403).json({ error: "You can only review programs you have purchased" });
+      }
+
+      const review = await storage.createProgramReview({
+        programId,
+        userId,
+        rating,
+        reviewText: reviewText || null,
+        status: "published",
+      });
+
+      res.status(201).json(review);
+    } catch (error) {
+      console.error("Error creating program review:", error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+
+  // GET /api/programs/:id/reviews - Get reviews for a program
+  app.get("/api/programs/:id/reviews", async (req: Request, res: Response) => {
+    try {
+      const { id: programId } = req.params;
+      const reviews = await storage.getProgramReviews(programId);
+      const averageRating = await storage.getProgramAverageRating(programId);
+      
+      res.json({
+        reviews,
+        averageRating,
+        totalReviews: reviews.length,
+      });
+    } catch (error) {
+      console.error("Error fetching program reviews:", error);
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  // ==========================================
+  // TRAINER REVIEW ROUTES
+  // ==========================================
+
+  // POST /api/trainers/:id/reviews - Create a review for a trainer
+  app.post("/api/trainers/:id/reviews", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const clientId = req.user.claims.sub;
+      const { id: trainerId } = req.params;
+      const { rating, reviewText } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5" });
+      }
+
+      const canReview = await storage.canClientReviewTrainer(clientId, trainerId);
+      if (!canReview) {
+        return res.status(403).json({ error: "You can only review trainers you are connected with" });
+      }
+
+      const review = await storage.createTrainerReview({
+        trainerId,
+        clientId,
+        rating,
+        reviewText: reviewText || null,
+        status: "published",
+      });
+
+      res.status(201).json(review);
+    } catch (error) {
+      console.error("Error creating trainer review:", error);
+      res.status(500).json({ error: "Failed to create review" });
+    }
+  });
+
+  // GET /api/trainers/:id/reviews - Get reviews for a trainer
+  app.get("/api/trainers/:id/reviews", async (req: Request, res: Response) => {
+    try {
+      const { id: trainerId } = req.params;
+      const reviews = await storage.getTrainerReviews(trainerId);
+      const averageRating = await storage.getTrainerAverageRating(trainerId);
+      
+      res.json({
+        reviews,
+        averageRating,
+        totalReviews: reviews.length,
+      });
+    } catch (error) {
+      console.error("Error fetching trainer reviews:", error);
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  // ==========================================
+  // PROGRAM ASSIGNMENT ROUTES
+  // ==========================================
+
+  // POST /api/trainer/assign-program - Assign a program to a client (no purchase required)
+  app.post("/api/trainer/assign-program", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { clientId, programId, note } = req.body;
+
+      if (!clientId || !programId) {
+        return res.status(400).json({ error: "Client ID and Program ID are required" });
+      }
+
+      // Verify the client is connected to this trainer
+      const clients = await storage.getTrainerClientsWithPrograms(trainerId);
+      const isConnected = clients.some(c => c.clientId === clientId);
+      
+      if (!isConnected) {
+        return res.status(403).json({ error: "Client is not connected to your account" });
+      }
+
+      // Verify the program belongs to this trainer
+      const program = await storage.getTrainerProgramById(programId);
+      if (!program || program.trainerId !== trainerId) {
+        return res.status(403).json({ error: "Program not found or does not belong to you" });
+      }
+
+      const assignment = await storage.assignProgramToClient(trainerId, clientId, programId, note);
+      
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning program:", error);
+      res.status(500).json({ error: "Failed to assign program" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Mark routes as registered only after successful setup
