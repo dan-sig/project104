@@ -18,12 +18,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { insertSupportRequestSchema, type InsertSupportRequest } from "@shared/schema";
 import type { User, TrainerProfile, SupportRequest } from "@shared/schema";
 import { Crown, Mail, Globe, Linkedin, Instagram, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
-import { useMergedClientData } from "@/hooks/useMergedClientData";
+import { useTrainerClients } from "@/hooks/useMergedClientData";
 
 export default function TrainerSettings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
-  const { stats } = useMergedClientData();
+  const { stats } = useTrainerClients();
 
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/auth/user"],

@@ -12,7 +12,7 @@ import { DiscountCodeManager } from "@/components/trainer/DiscountCodeManager";
 import { TrainerInvitations } from "@/components/trainer/TrainerInvitations";
 import { TrainerProgramsGrid } from "@/components/trainer/TrainerProgramsGrid";
 import { useQuery } from "@tanstack/react-query";
-import { useMergedClientData } from "@/hooks/useMergedClientData";
+import { useTrainerClients } from "@/hooks/useMergedClientData";
 import { usePendingInvitesCount } from "@/hooks/usePendingInvitesCount";
 import type { User, TrainerProfile } from "@shared/schema";
 import { AlertTriangle, Users, Crown, Settings } from "lucide-react";
@@ -20,7 +20,7 @@ import { AlertTriangle, Users, Crown, Settings } from "lucide-react";
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("clients");
-  const { stats, isLoading: isLoadingClients } = useMergedClientData();
+  const { stats, isLoading: isLoadingClients } = useTrainerClients();
 
   // Get current user ID for custom exercises
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
@@ -35,6 +35,17 @@ export default function TrainerDashboard() {
 
   // Fetch pending invites count for Client Invitations tab badge
   const { pendingCount: pendingInvitesCount, hasPending: hasPendingInvites } = usePendingInvitesCount();
+
+  // Fetch real trainer alerts
+  const { data: alertsSummary, isLoading: isLoadingAlerts } = useQuery<{
+    inactiveClients: number;
+    pendingInvitesSent: number;
+    pendingInvitesReceived: number;
+    workoutsMissingNotes: number;
+    totalAlerts: number;
+  }>({
+    queryKey: ["/api/trainer/alerts/summary"],
+  });
 
   const clientCount = stats.activeClients || 0;
   const isPremium = trainerProfile?.subscriptionStatus === "premium";
@@ -78,7 +89,9 @@ export default function TrainerDashboard() {
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         {/* Alert Summary Cards */}
-        {!isLoadingClients && !isLoadingProfile && (stats.totalAlerts > 0 || isNearLimit || isOverLimit) && (
+        {!isLoadingClients && !isLoadingProfile && !isLoadingAlerts && (
+          (alertsSummary && alertsSummary.totalAlerts > 0) || isNearLimit || isOverLimit
+        ) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {isOverLimit && (
               <Card className="bg-orange-500/10 border-orange-500/20">
@@ -128,21 +141,46 @@ export default function TrainerDashboard() {
                 </CardContent>
               </Card>
             )}
-            {stats.totalAlerts > 0 && (
-              <Card className="bg-destructive/10 border-destructive/20">
+            {alertsSummary && alertsSummary.inactiveClients > 0 && (
+              <Card className="bg-yellow-500/10 border-yellow-500/20">
                 <CardContent className="p-4 flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-medium" data-testid="text-total-alerts">
-                      {stats.totalAlerts} alert{stats.totalAlerts !== 1 ? 's' : ''} requiring attention
+                    <p className="font-medium" data-testid="text-inactive-clients-alert">
+                      {alertsSummary.inactiveClients} inactive client{alertsSummary.inactiveClients !== 1 ? 's' : ''}
                     </p>
-                    <p className="text-sm text-muted-foreground">Review client feedback and concerns</p>
+                    <p className="text-sm text-muted-foreground">No workout in 7+ days</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setActiveTab("clients")}
-                    data-testid="button-view-alerts"
+                    data-testid="button-view-inactive-clients"
+                  >
+                    View
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {alertsSummary && (alertsSummary.pendingInvitesSent > 0 || alertsSummary.pendingInvitesReceived > 0) && (
+              <Card className="bg-blue-500/10 border-blue-500/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid="text-pending-invites-alert">
+                      {alertsSummary.pendingInvitesSent + alertsSummary.pendingInvitesReceived} pending invite{(alertsSummary.pendingInvitesSent + alertsSummary.pendingInvitesReceived) !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {alertsSummary.pendingInvitesSent > 0 && `${alertsSummary.pendingInvitesSent} sent`}
+                      {alertsSummary.pendingInvitesSent > 0 && alertsSummary.pendingInvitesReceived > 0 && ', '}
+                      {alertsSummary.pendingInvitesReceived > 0 && `${alertsSummary.pendingInvitesReceived} received`}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab("client-experience")}
+                    data-testid="button-view-pending-invites"
                   >
                     View
                   </Button>

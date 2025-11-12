@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Users, AlertTriangle, Plus } from 'lucide-react';
-import { useMergedClientData } from '@/hooks/useMergedClientData';
+import { useTrainerClients } from '@/hooks/useMergedClientData';
 import { format, formatDistanceToNow } from 'date-fns';
 import { AssignProgramDialog } from './AssignProgramDialog';
 
@@ -24,7 +24,7 @@ export function TrainerRosterTable() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
 
-  const { clients, isLoading } = useMergedClientData();
+  const { clients, isLoading } = useTrainerClients();
 
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
