@@ -326,23 +326,23 @@ export async function seedDatabase() {
     if (existingPrograms.length > 0) {
       console.log(`[SEED] Programs already exist (${existingPrograms.length} found), skipping program creation`);
       // Use existing programs for purchases
-      program1 = existingPrograms.find(p => p.name === 'Upper Body Power Builder');
-      program2 = existingPrograms.find(p => p.name === 'Functional Movement Mastery');
-      program3 = existingPrograms.find(p => p.name === 'Beginner Strength Foundation');
+      program1 = existingPrograms.find(p => p.name === 'Flow');
+      program2 = existingPrograms.find(p => p.name === 'Build');
+      program3 = existingPrograms.find(p => p.name === 'Strong');
     } else {
     
-    // Program 1: Upper Body Power
+    // Program 1: Flow
     program1 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
-      name: 'Upper Body Power Builder',
-      description: 'Build explosive upper body strength with compound movements and power training. Perfect for athletes and strength enthusiasts.',
-      price: 49.99,
+      name: 'Flow',
+      description: 'Mobility-focused program emphasizing movement quality, flexibility, and body control. Perfect for recovery and building a solid foundation.',
+      price: 29.99,
       pricingType: 'one_time',
-      difficulty: 'intermediate',
-      daysPerWeek: 2,
+      difficulty: 'beginner',
+      daysPerWeek: 3,
       durationWeeks: 4,
       isPublished: 1,
-      slug: 'upper-body-power-builder',
+      slug: 'flow',
     });
 
     // Program 1 - Workout 1
@@ -435,18 +435,18 @@ export async function seedDatabase() {
       orderIndex: 1,
     });
 
-    // Program 2: Full Body Functional
+    // Program 2: Build
     program2 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
-      name: 'Functional Movement Mastery',
-      description: 'Master all 10 functional movement patterns with science-backed programming. Includes rotation, carry, and anti-movement core work.',
-      price: 29.99,
+      name: 'Build',
+      description: 'Hypertrophy-focused program designed to build muscle mass through progressive overload and volume training.',
+      price: 39.99,
       pricingType: 'subscription',
-      difficulty: 'beginner',
-      daysPerWeek: 3,
+      difficulty: 'intermediate',
+      daysPerWeek: 4,
       durationWeeks: 4,
       isPublished: 1,
-      slug: 'functional-movement-mastery',
+      slug: 'build',
     });
 
     // Program 2 - Workout 1
@@ -605,18 +605,18 @@ export async function seedDatabase() {
       orderIndex: 1,
     });
 
-    // Program 3: Starter Strength
+    // Program 3: Strong
     program3 = await storage.createTrainerProgram({
       trainerId: TRAINER_ID,
-      name: 'Beginner Strength Foundation',
-      description: 'Perfect for beginners looking to build a solid strength base. Simple, effective programming focused on the fundamentals.',
-      price: 19.99,
+      name: 'Strong',
+      description: 'Strength-focused program using heavy compound movements and progressive loading to maximize force production and power.',
+      price: 49.99,
       pricingType: 'one_time',
-      difficulty: 'beginner',
-      daysPerWeek: 3,
+      difficulty: 'advanced',
+      daysPerWeek: 4,
       durationWeeks: 4,
       isPublished: 1,
-      slug: 'beginner-strength-foundation',
+      slug: 'strong',
     });
 
     const p3w1 = await storage.createTrainerProgramWorkout({

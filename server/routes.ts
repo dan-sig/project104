@@ -4071,6 +4071,18 @@ Provide a helpful, motivating response that addresses their question using this 
     }
   });
 
+  // GET /api/trainer/alerts/per-client - Get per-client alert counts for roster table
+  app.get("/api/trainer/alerts/per-client", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const alertSummary = await storage.getPerClientAlertSummary(trainerId);
+      res.json(alertSummary);
+    } catch (error) {
+      console.error("Error fetching per-client alert summary:", error);
+      res.status(500).json({ error: "Failed to fetch alert summary" });
+    }
+  });
+
   // GET /api/trainer/alerts/detail?type={type} - Get detailed alert information
   app.get("/api/trainer/alerts/detail", isAuthenticated, async (req: any, res: Response) => {
     try {

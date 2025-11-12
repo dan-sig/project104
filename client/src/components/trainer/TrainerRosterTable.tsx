@@ -40,6 +40,18 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
     enabled: !!filterType,
   });
 
+  const { data: perClientAlerts } = useQuery<Array<{
+    clientId: string;
+    counts: {
+      inactive: number;
+      missingPreNotes: number;
+      missingPostNotes: number;
+    };
+    total: number;
+  }>>({
+    queryKey: ["/api/trainer/alerts/per-client"],
+  });
+
   const highlightedClientIds = new Set(
     filterType === 'inactive' 
       ? (alertDetail?.inactiveClients.map(c => c.clientId) || [])
@@ -129,6 +141,7 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
                   <TableHead>Client</TableHead>
                   <TableHead>Program</TableHead>
                   <TableHead>Last Workout</TableHead>
+                  <TableHead className="text-center">Alerts</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -137,6 +150,8 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
                 {filteredClients.map((client) => {
                   const hasProgram = !!client.currentProgram && client.currentProgram !== 'No program';
                   const isHighlighted = highlightedClientIds.has(client.id);
+                  const alertData = perClientAlerts?.find(a => a.clientId === client.id);
+                  const alertCount = alertData?.total || 0;
                   
                   return (
                   <TableRow 
@@ -183,6 +198,20 @@ export function TrainerRosterTable({ filterType, onClearFilter }: TrainerRosterT
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">No workouts yet</span>
+                      )}
+                    </TableCell>
+                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-center cursor-pointer">
+                      {alertCount > 0 ? (
+                        <Badge 
+                          variant="secondary" 
+                          className="gap-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20" 
+                          data-testid={`badge-alerts-${client.id}`}
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          {alertCount}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-right cursor-pointer">

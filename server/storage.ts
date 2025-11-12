@@ -206,6 +206,15 @@ export interface IStorage {
     scheduledDate: string;
     noteType: 'pre-session' | 'post-session';
   }>>;
+  getPerClientAlertSummary(trainerId: string): Promise<Array<{
+    clientId: string;
+    counts: {
+      inactive: number;
+      missingPreNotes: number;
+      missingPostNotes: number;
+    };
+    total: number;
+  }>>;
   
   getUserWorkoutStreak(userId: string): Promise<number>;
   getUnreadTrainerNotes(userId: string): Promise<number>;
@@ -1642,6 +1651,57 @@ export class DbStorage implements IStorage {
     ];
 
     return results;
+  }
+
+  async getPerClientAlertSummary(trainerId: string): Promise<Array<{
+    clientId: string;
+    counts: {
+      inactive: number;
+      missingPreNotes: number;
+      missingPostNotes: number;
+    };
+    total: number;
+  }>> {
+    // Get all clients
+    const clients = await this.getTrainerClients(trainerId);
+    const activeClients = clients.filter(c => c.status === 'active');
+    
+    // Get inactive clients
+    const inactiveClients = await this.getInactiveClients(trainerId, 7);
+    const inactiveClientIds = new Set(inactiveClients.map(c => c.clientId));
+    
+    // Get workouts missing notes
+    const workoutsMissingNotes = await this.getWorkoutsMissingNotes(trainerId);
+    
+    // Group missing notes by client
+    const missingNotesByClient = new Map<string, { preNotes: number; postNotes: number }>();
+    for (const workout of workoutsMissingNotes) {
+      if (!missingNotesByClient.has(workout.clientId)) {
+        missingNotesByClient.set(workout.clientId, { preNotes: 0, postNotes: 0 });
+      }
+      const counts = missingNotesByClient.get(workout.clientId)!;
+      if (workout.noteType === 'pre-session') {
+        counts.preNotes++;
+      } else {
+        counts.postNotes++;
+      }
+    }
+    
+    // Build summary for each client
+    return activeClients.map(client => {
+      const noteCounts = missingNotesByClient.get(client.clientId) || { preNotes: 0, postNotes: 0 };
+      const isInactive = inactiveClientIds.has(client.clientId) ? 1 : 0;
+      
+      return {
+        clientId: client.clientId,
+        counts: {
+          inactive: isInactive,
+          missingPreNotes: noteCounts.preNotes,
+          missingPostNotes: noteCounts.postNotes,
+        },
+        total: isInactive + noteCounts.preNotes + noteCounts.postNotes,
+      };
+    });
   }
 
   // ==========================================
