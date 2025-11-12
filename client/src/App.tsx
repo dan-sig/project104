@@ -45,7 +45,6 @@ import ProgramBuilder from "./pages/trainer/ProgramBuilder";
 import TrainerProgramsList from "./pages/trainer/TrainerProgramsList";
 import ProgramBuyPage from "./pages/ProgramBuyPage";
 import InviteLanding from "./pages/InviteLanding";
-import { TrainerDataProvider } from "./contexts/TrainerDataContext";
 import { TrainerOnboardingGate } from "./components/trainer/TrainerOnboardingGate";
 
 function OnboardingFlow() {
@@ -547,9 +546,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <TrainerDataProvider>
-          <AppRoutes />
-        </TrainerDataProvider>
+        <AppRoutes />
       </TooltipProvider>
     </QueryClientProvider>
   );

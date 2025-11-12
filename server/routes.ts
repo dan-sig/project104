@@ -3796,7 +3796,7 @@ Provide a helpful, motivating response that addresses their question using this 
       }
 
       // Fetch client's active program
-      const activeProgram = await storage.getActiveProgram(clientId);
+      const activeProgram = await storage.getUserActiveProgram(clientId);
 
       // Fetch client's fitness assessments
       const fitnessAssessments = await storage.getUserFitnessAssessments(clientId);

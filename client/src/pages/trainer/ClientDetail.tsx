@@ -1,28 +1,66 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useTrainerData } from "@/contexts/TrainerDataContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, Dumbbell, TrendingUp, AlertTriangle, Calendar } from "lucide-react";
+import { ArrowLeft, User, Dumbbell, TrendingUp, AlertTriangle, Calendar, Loader2 } from "lucide-react";
 import { ClientProfile } from "@/components/trainer/ClientProfile";
 import { ClientProgram } from "@/components/trainer/ClientProgram";
 import { ClientProgress } from "@/components/trainer/ClientProgress";
 import { ClientAlerts } from "@/components/trainer/ClientAlerts";
 import { ClientWorkoutSessions } from "@/components/trainer/ClientWorkoutSessions";
 
+interface ClientDetailData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  status: string;
+  fitnessLevel: string;
+  primaryGoal: string;
+  nutritionGoal: string;
+  equipmentAccess: string[];
+  weeklyWorkoutDays: number;
+  preferredDuration: number;
+  connectionDate: string;
+  activeProgram: {
+    id: string;
+    name: string;
+    description: string | null;
+    creatorId: string;
+  } | null;
+  stats: {
+    totalWorkouts: number;
+    currentStreak: number;
+  };
+  recentSessions: any[];
+}
+
 export default function ClientDetail() {
   const [, params] = useRoute("/trainer/client/:id");
   const [, setLocation] = useLocation();
-  const { getClient } = useTrainerData();
   const [activeTab, setActiveTab] = useState("profile");
 
   const clientId = params?.id;
-  const client = clientId ? getClient(clientId) : undefined;
 
-  if (!client) {
+  // Fetch client details from API
+  const { data: client, isLoading, error } = useQuery<ClientDetailData>({
+    queryKey: ["/api/trainer/clients", clientId],
+    enabled: !!clientId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !client) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-8">
@@ -31,6 +69,7 @@ export default function ClientDetail() {
             variant="outline"
             className="mt-4 w-full"
             onClick={() => setLocation('/trainer')}
+            data-testid="button-back-to-dashboard"
           >
             Back to Dashboard
           </Button>
@@ -38,6 +77,31 @@ export default function ClientDetail() {
       </div>
     );
   }
+
+  // Compute client name and initials
+  const clientName = `${client.firstName} ${client.lastName}`;
+  const clientInitials = `${client.firstName[0]}${client.lastName[0]}`.toUpperCase();
+
+  // Transform API data to ClientProfile format
+  const clientProfileData = {
+    id: client.id,
+    name: clientName,
+    email: client.email,
+    status: client.status,
+    joinedDate: client.connectionDate,
+    lastWorkoutDate: client.recentSessions[0]?.scheduledDate || null,
+    currentProgram: client.activeProgram,
+    profile: {
+      fitnessLevel: client.fitnessLevel,
+      goals: client.primaryGoal,
+      injuries: null, // Not available in API response
+      availableEquipment: client.equipmentAccess,
+      daysPerWeek: client.weeklyWorkoutDays,
+      sessionDuration: client.preferredDuration,
+      focusCycle: 'flow', // Not available in API response, using default
+      nutritionGoal: client.nutritionGoal,
+    },
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,14 +120,14 @@ export default function ClientDetail() {
             <div className="flex items-center gap-4 flex-1">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                  {client.avatar}
+                  {clientInitials}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-bold" data-testid="text-client-name">{client.name}</h1>
+                <h1 className="text-2xl font-bold" data-testid="text-client-name">{clientName}</h1>
                 <p className="text-sm text-muted-foreground">{client.email}</p>
               </div>
-              <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
+              <Badge variant={client.status === 'active' ? 'default' : 'secondary'} data-testid="badge-client-status">
                 {client.status}
               </Badge>
             </div>
@@ -72,35 +136,13 @@ export default function ClientDetail() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Alert Summary */}
-        {client.alertsCount > 0 && (
-          <div className="mb-6">
-            <Card className="bg-destructive/10 border-destructive/20">
-              <CardContent className="p-4 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <span className="font-medium">{client.alertsCount} alerts requiring attention</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActiveTab("alerts")}
-                >
-                  View
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-client-detail">
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="program" data-testid="tab-program">
-              <Dumbbell className="h-4 w-4 mr-2" />
-              Program
             </TabsTrigger>
             <TabsTrigger value="workouts" data-testid="tab-workouts">
               <Calendar className="h-4 w-4 mr-2" />
@@ -110,24 +152,15 @@ export default function ClientDetail() {
               <TrendingUp className="h-4 w-4 mr-2" />
               Progress
             </TabsTrigger>
-            <TabsTrigger value="alerts" data-testid="tab-alerts">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Alerts
-              {client.alertsCount > 0 && (
-                <Badge variant="destructive" className="ml-2 h-5 px-1 text-xs">
-                  {client.alertsCount}
-                </Badge>
-              )}
+            <TabsTrigger value="program" data-testid="tab-program">
+              <Dumbbell className="h-4 w-4 mr-2" />
+              Program
             </TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
             <TabsContent value="profile">
-              <ClientProfile client={client} />
-            </TabsContent>
-
-            <TabsContent value="program">
-              <ClientProgram clientId={client.id} />
+              <ClientProfile client={clientProfileData} />
             </TabsContent>
 
             <TabsContent value="workouts">
@@ -138,8 +171,8 @@ export default function ClientDetail() {
               <ClientProgress clientId={client.id} />
             </TabsContent>
 
-            <TabsContent value="alerts">
-              <ClientAlerts clientId={client.id} />
+            <TabsContent value="program">
+              <ClientProgram clientId={client.id} />
             </TabsContent>
           </div>
         </Tabs>

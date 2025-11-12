@@ -1,16 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTrainerData } from "@/contexts/TrainerDataContext";
-import { TrendingUp, Calendar, Dumbbell, CheckCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { TrendingUp, Calendar, Dumbbell, CheckCircle, Loader2 } from "lucide-react";
 
 interface ClientProgressProps {
   clientId: string;
 }
 
+interface WorkoutSession {
+  id: string;
+  status: string;
+  scheduledDate: string;
+  durationMinutes: number | null;
+  caloriesBurned: number | null;
+}
+
 export function ClientProgress({ clientId }: ClientProgressProps) {
-  const { getClientWorkouts } = useTrainerData();
-  const workouts = getClientWorkouts(clientId);
-  
-  const completedWorkouts = workouts.filter(w => w.completed);
+  const { data: sessions, isLoading } = useQuery<WorkoutSession[]>({
+    queryKey: ["/api/trainer/clients", clientId, "sessions"],
+    enabled: !!clientId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const workouts = sessions || [];
+  const completedWorkouts = workouts.filter(w => w.status === 'completed');
   const totalWorkouts = workouts.length;
   const completionRate = totalWorkouts > 0 
     ? Math.round((completedWorkouts.length / totalWorkouts) * 100) 
@@ -74,15 +93,15 @@ export function ClientProgress({ clientId }: ClientProgressProps) {
         </CardHeader>
         <CardContent>
           {completedWorkouts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No completed workouts yet</p>
+            <p className="text-center text-muted-foreground py-8" data-testid="text-no-workouts">No completed workouts yet</p>
           ) : (
             <div className="space-y-4">
               {completedWorkouts.slice(0, 5).map((workout) => (
-                <div key={workout.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={workout.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`card-workout-${workout.id}`}>
                   <div className="flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-success" />
                     <div>
-                      <p className="font-medium">{workout.name}</p>
+                      <p className="font-medium">Workout Session</p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-3 w-3" />
                         <span>{new Date(workout.scheduledDate).toLocaleDateString()}</span>
@@ -90,9 +109,11 @@ export function ClientProgress({ clientId }: ClientProgressProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">{workout.exercises.length} exercises</p>
-                    {workout.duration && (
-                      <p className="text-sm text-muted-foreground">{workout.duration} min</p>
+                    {workout.durationMinutes && (
+                      <p className="text-sm font-medium">{workout.durationMinutes} min</p>
+                    )}
+                    {workout.caloriesBurned && (
+                      <p className="text-sm text-muted-foreground">{workout.caloriesBurned} cal</p>
                     )}
                   </div>
                 </div>
