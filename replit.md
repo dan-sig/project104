@@ -38,6 +38,8 @@ The backend is an Express.js server developed with TypeScript, handling JSON req
 - **Unified Program Settings**: Combines nutrition and workout preferences, triggering program regeneration.
 - **Trainer Marketplace**: Allows trainers to create, publish, and sell programs, and manage clients with features like a 3-step onboarding wizard, freemium coach connection system, soft-delete architecture for disconnections, username-based coach discovery, and a sales dashboard.
 - **Trainer Workout Notes System**: Enables trainers to provide pre-session notes and post-session reviews.
+- **Comprehensive Alert System**: Per-client alert tracking with dual-endpoint architecture (lightweight counts for roster table, detailed categorized alerts on client pages). Tracks inactive status (7+ days without workout), missing pre-session notes, and missing post-session reviews. Yellow warning theme throughout with summary banners and dedicated Alerts tab on client detail pages.
+- **Morphit Cycle Programs**: Training programs use Morphit cycle names (Flow, Build, Strong, Move) reflecting the longevity-focused progressive training philosophy. Seed script updates existing programs to match this naming convention.
 
 ## External Dependencies
 - **UI Libraries**: Radix UI primitives, Recharts, date-fns, cmdk, Lucide React.
