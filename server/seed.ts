@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { db } from "./db";
-import { trainerDiscountCodes } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { trainerDiscountCodes, programPurchases, workoutSessions } from "@shared/schema";
 
 const TRAINER_ID = 'test-trainer-123';
 
@@ -827,6 +828,255 @@ export async function seedDatabase() {
     } else {
       console.log('[SEED] Fitness assessments already exist, skipping');
     }
+
+    // Create workout sessions for clients
+    console.log('[SEED] Creating workout sessions for clients...');
+    
+    // Helper function to get date strings
+    const getDateString = (daysOffset: number): string => {
+      const date = new Date();
+      date.setDate(date.getDate() + daysOffset);
+      return date.toISOString().split('T')[0];
+    };
+
+    // Fetch existing purchases to get workoutProgramId (needed for idempotent seeding)
+    const sarahPurchases = await db.select().from(programPurchases).where(eq(programPurchases.buyerId, CLIENT_IDS.SARAH));
+    const mikePurchases = await db.select().from(programPurchases).where(eq(programPurchases.buyerId, CLIENT_IDS.MIKE));
+    const jessicaPurchases = await db.select().from(programPurchases).where(eq(programPurchases.buyerId, CLIENT_IDS.JESSICA));
+
+    const sarahProgramId = sarahPurchases[0]?.workoutProgramId || 'program-sarah-1';
+    const mikeProgramId = mikePurchases[0]?.workoutProgramId || 'program-mike-1';
+    const jessicaProgramId = jessicaPurchases[0]?.workoutProgramId || 'program-jessica-1';
+
+    // Check if sessions already exist for each client (check for specific seed session IDs)
+    const sarahSessions = await db.select().from(workoutSessions).where(eq(workoutSessions.id, 'session-sarah-1'));
+    const mikeSessions = await db.select().from(workoutSessions).where(eq(workoutSessions.id, 'session-mike-1'));
+    const jessicaSessions = await db.select().from(workoutSessions).where(eq(workoutSessions.id, 'session-jessica-1'));
+    
+    if (sarahSessions.length === 0) {
+      // Sarah's sessions (beginner, building consistency)
+      // Completed workout from 5 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-1',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(-5),
+        status: 'completed',
+        durationMinutes: 42,
+        caloriesBurned: 185,
+        trainerPreSessionNotes: 'Great job getting started! Focus on form over speed today.',
+        trainerPostSessionReview: 'Excellent first session! Your squat form was solid. Keep it up!',
+      });
+
+      // Completed workout from 3 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-2',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(-3),
+        status: 'completed',
+        durationMinutes: 45,
+        caloriesBurned: 195,
+      });
+
+      // Completed workout from yesterday
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-3',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(-1),
+        status: 'completed',
+        durationMinutes: 48,
+        caloriesBurned: 210,
+        trainerPostSessionReview: 'Nice progress! I noticed you increased your push-up reps. Keep building that strength.',
+      });
+
+      // Today's workout - ready to start
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-4',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(0),
+        status: 'scheduled',
+        trainerPreSessionNotes: 'You\'re doing great! Today we\'ll add some variety with resistance bands. Take your time and focus on the mind-muscle connection.',
+      });
+
+      // Scheduled for tomorrow
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-5',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(1),
+        status: 'scheduled',
+      });
+
+      // Scheduled for 3 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-sarah-6',
+        userId: CLIENT_IDS.SARAH,
+        scheduledDate: getDateString(3),
+        status: 'scheduled',
+      });
+
+      console.log('[SEED] Created 6 workout sessions for Sarah');
+    } else {
+      console.log('[SEED] Sarah workout sessions already exist, skipping');
+    }
+
+    if (mikeSessions.length === 0) {
+      // Mike's sessions (intermediate, consistent performer)
+      // Completed from 6 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-1',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(-6),
+        status: 'completed',
+        durationMinutes: 58,
+        caloriesBurned: 340,
+        trainerPreSessionNotes: 'Ready for a challenging lower body day? Let\'s focus on progressive overload.',
+        trainerPostSessionReview: 'Solid work on squats! Your 225lb form was perfect. Ready to add 5lbs next week.',
+      });
+
+      // Completed from 4 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-2',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(-4),
+        status: 'completed',
+        durationMinutes: 62,
+        caloriesBurned: 380,
+      });
+
+      // Completed from 2 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-3',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(-2),
+        status: 'completed',
+        durationMinutes: 60,
+        caloriesBurned: 365,
+        trainerPostSessionReview: 'Great pull day! Your deadlift technique is improving. Keep that back straight and core tight.',
+      });
+
+      // In-progress (started today)
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-4',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(0),
+        status: 'in_progress',
+        trainerPreSessionNotes: 'Upper body push focus today. Remember to control the eccentric phase on bench press.',
+      });
+
+      // Scheduled for 2 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-5',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(2),
+        status: 'scheduled',
+      });
+
+      // Scheduled for 4 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-6',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(4),
+        status: 'scheduled',
+        trainerPreSessionNotes: 'Deload week coming up. We\'ll reduce intensity by 20% to allow for recovery.',
+      });
+
+      // Scheduled for 6 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-mike-7',
+        userId: CLIENT_IDS.MIKE,
+        scheduledDate: getDateString(6),
+        status: 'scheduled',
+      });
+
+      console.log('[SEED] Created 7 workout sessions for Mike');
+    } else {
+      console.log('[SEED] Mike workout sessions already exist, skipping');
+    }
+
+    if (jessicaSessions.length === 0) {
+      // Jessica's sessions (advanced, high volume)
+      // Completed from 7 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-1',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(-7),
+        status: 'completed',
+        durationMinutes: 72,
+        caloriesBurned: 420,
+        trainerPostSessionReview: 'Impressive endurance work! Your cardio capacity is next level.',
+      });
+
+      // Completed from 5 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-2',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(-5),
+        status: 'completed',
+        durationMinutes: 78,
+        caloriesBurned: 445,
+      });
+
+      // Completed from 3 days ago
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-3',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(-3),
+        status: 'completed',
+        durationMinutes: 75,
+        caloriesBurned: 430,
+        trainerPreSessionNotes: 'Today we\'re testing your max pull-ups. Go for a new PR!',
+        trainerPostSessionReview: '15 pull-ups! New record! Your back strength is phenomenal.',
+      });
+
+      // Completed from yesterday
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-4',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(-1),
+        status: 'completed',
+        durationMinutes: 74,
+        caloriesBurned: 435,
+      });
+
+      // Today's workout - scheduled
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-5',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(0),
+        status: 'scheduled',
+        trainerPreSessionNotes: 'Active recovery day. Focus on mobility and light cardio. Your body needs this!',
+      });
+
+      // Scheduled for 2 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-6',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(2),
+        status: 'scheduled',
+      });
+
+      // Scheduled for 4 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-7',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(4),
+        status: 'scheduled',
+      });
+
+      // Scheduled for 6 days from now
+      await db.insert(workoutSessions).values({
+        id: 'session-jessica-8',
+        userId: CLIENT_IDS.JESSICA,
+        scheduledDate: getDateString(6),
+        status: 'scheduled',
+        trainerPreSessionNotes: 'Big strength day ahead. We\'re going heavy on compound movements. Get plenty of rest tonight!',
+      });
+
+      console.log('[SEED] Created 8 workout sessions for Jessica');
+    } else {
+      console.log('[SEED] Jessica workout sessions already exist, skipping');
+    }
+
+    console.log('[SEED] Workout session seeding complete');
 
     // Create bidirectional trainer-client invitations
     console.log('[SEED] Creating sample invitations...');
