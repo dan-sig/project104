@@ -4042,6 +4042,69 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
+  // TRAINER ALERT ROUTES
+  // ==========================================
+  // Endpoints for retrieving trainer alerts and notifications
+
+  // GET /api/trainer/alerts/summary - Get alert counts for dashboard banner
+  app.get("/api/trainer/alerts/summary", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+
+      // Run all alert queries in parallel for efficiency
+      const [inactiveClients, pendingInvites, missingNotes] = await Promise.all([
+        storage.getInactiveClients(trainerId, 7),
+        storage.getPendingInvitesCounts(trainerId),
+        storage.getWorkoutsMissingNotes(trainerId),
+      ]);
+
+      res.json({
+        inactiveClients: inactiveClients.length,
+        pendingInvitesSent: pendingInvites.sent,
+        pendingInvitesReceived: pendingInvites.received,
+        workoutsMissingNotes: missingNotes.length,
+        totalAlerts: inactiveClients.length + pendingInvites.sent + pendingInvites.received + missingNotes.length,
+      });
+    } catch (error) {
+      console.error("Error fetching trainer alerts summary:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+
+  // GET /api/trainer/alerts/detail?type={type} - Get detailed alert information
+  app.get("/api/trainer/alerts/detail", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const trainerId = req.user.claims.sub;
+      const { type } = req.query;
+
+      if (!type || typeof type !== 'string') {
+        return res.status(400).json({ error: "Alert type is required" });
+      }
+
+      let result;
+      switch (type) {
+        case 'inactive':
+          result = await storage.getInactiveClients(trainerId, 7);
+          break;
+        case 'invites':
+          const invites = await storage.getPendingInvitesCounts(trainerId);
+          result = invites;
+          break;
+        case 'notes':
+          result = await storage.getWorkoutsMissingNotes(trainerId);
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid alert type" });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching alert details:", error);
+      res.status(500).json({ error: "Failed to fetch alert details" });
+    }
+  });
+
+  // ==========================================
   // CLIENT-TRAINER CONNECTION ROUTES
   // ==========================================
   // Endpoints for connecting clients to trainers via username
