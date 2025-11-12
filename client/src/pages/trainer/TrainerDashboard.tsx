@@ -20,6 +20,7 @@ import { AlertTriangle, Users, Crown, Settings } from "lucide-react";
 export default function TrainerDashboard() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("clients");
+  const [clientFilter, setClientFilter] = useState<'inactive' | null>(null);
   const { stats, isLoading: isLoadingClients } = useTrainerClients();
 
   // Get current user ID for custom exercises
@@ -154,7 +155,10 @@ export default function TrainerDashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setActiveTab("clients")}
+                    onClick={() => {
+                      setClientFilter('inactive');
+                      setActiveTab("clients");
+                    }}
                     data-testid="button-view-inactive-clients"
                   >
                     View
@@ -191,7 +195,12 @@ export default function TrainerDashboard() {
         )}
 
         {/* Main Content with Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(tab) => {
+          setActiveTab(tab);
+          if (tab !== 'clients') {
+            setClientFilter(null);
+          }
+        }}>
           <TabsList data-testid="tabs-trainer-dashboard">
             <TabsTrigger value="clients" data-testid="tab-clients">Clients</TabsTrigger>
             <TabsTrigger value="client-experience" data-testid="tab-client-experience" className="relative">
@@ -210,7 +219,7 @@ export default function TrainerDashboard() {
           </TabsList>
 
           <TabsContent value="clients" className="mt-6">
-            <TrainerRosterTable />
+            <TrainerRosterTable filterType={clientFilter} />
           </TabsContent>
 
           <TabsContent value="client-experience" className="mt-6 space-y-8">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import {
   Table,
   TableBody,
@@ -13,12 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Users, AlertTriangle, Plus } from 'lucide-react';
+import { Search, Users, AlertTriangle, Plus, X } from 'lucide-react';
 import { useTrainerClients } from '@/hooks/useMergedClientData';
 import { format, formatDistanceToNow } from 'date-fns';
 import { AssignProgramDialog } from './AssignProgramDialog';
 
-export function TrainerRosterTable() {
+interface TrainerRosterTableProps {
+  filterType?: 'inactive' | null;
+}
+
+export function TrainerRosterTable({ filterType }: TrainerRosterTableProps = {}) {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -26,34 +31,64 @@ export function TrainerRosterTable() {
 
   const { clients, isLoading } = useTrainerClients();
 
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (client.currentProgram && client.currentProgram.toLowerCase().includes(searchQuery.toLowerCase()))
+  const { data: alertDetail } = useQuery<{
+    inactiveClients: Array<{ clientId: string; clientName: string; lastWorkout: string | null }>;
+    workoutsMissingNotes: Array<{ clientId: string; clientName: string; workoutId: string }>;
+  }>({
+    queryKey: ["/api/trainer/alerts/detail"],
+    enabled: !!filterType,
+  });
+
+  const highlightedClientIds = new Set(
+    filterType === 'inactive' 
+      ? (alertDetail?.inactiveClients.map(c => c.clientId) || [])
+      : []
   );
+
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (client.currentProgram && client.currentProgram.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesFilter = !filterType || highlightedClientIds.has(client.id);
+    
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Client Roster
             </CardTitle>
             <CardDescription>
-              {clients.length} total client{clients.length !== 1 ? 's' : ''}
+              {filterType ? (
+                `${filteredClients.length} ${filterType} client${filteredClients.length !== 1 ? 's' : ''}`
+              ) : (
+                `${clients.length} total client${clients.length !== 1 ? 's' : ''}`
+              )}
             </CardDescription>
           </div>
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or program..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-              data-testid="input-search-clients"
-            />
+          <div className="flex items-center gap-2">
+            {filterType && (
+              <Badge variant="secondary" className="gap-1" data-testid="badge-active-filter">
+                <AlertTriangle className="h-3 w-3" />
+                {filterType} filter
+              </Badge>
+            )}
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or program..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-clients"
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -80,7 +115,6 @@ export function TrainerRosterTable() {
                   <TableHead>Client</TableHead>
                   <TableHead>Program</TableHead>
                   <TableHead>Last Workout</TableHead>
-                  <TableHead className="text-center">Alerts</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -88,11 +122,12 @@ export function TrainerRosterTable() {
               <TableBody>
                 {filteredClients.map((client) => {
                   const hasProgram = !!client.currentProgram && client.currentProgram !== 'No program';
+                  const isHighlighted = highlightedClientIds.has(client.id);
                   
                   return (
                   <TableRow 
                     key={client.id}
-                    className="hover-elevate"
+                    className={`hover-elevate ${isHighlighted ? 'bg-yellow-500/10 dark:bg-yellow-500/10' : ''}`}
                     data-testid={`row-client-${client.id}`}
                   >
                     <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="cursor-pointer">
@@ -134,18 +169,6 @@ export function TrainerRosterTable() {
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">No workouts yet</span>
-                      )}
-                    </TableCell>
-                    <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-center cursor-pointer">
-                      {client.alertsCount > 0 ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                          <Badge variant="destructive" data-testid={`badge-alerts-${client.id}`}>
-                            {client.alertsCount}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell onClick={() => setLocation(`/trainer/client/${client.id}`)} className="text-right cursor-pointer">
