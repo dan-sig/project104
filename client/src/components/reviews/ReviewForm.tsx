@@ -8,13 +8,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 
 interface ReviewFormProps {
-  type: "program" | "trainer";
-  targetId: string;
+  programId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function ReviewForm({ type, targetId, onSuccess, onCancel }: ReviewFormProps) {
+export function ReviewForm({ programId, onSuccess, onCancel }: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
@@ -22,11 +21,7 @@ export function ReviewForm({ type, targetId, onSuccess, onCancel }: ReviewFormPr
 
   const createReviewMutation = useMutation({
     mutationFn: async (data: { rating: number; reviewText: string }) => {
-      const endpoint = type === "program" 
-        ? `/api/programs/${targetId}/reviews`
-        : `/api/trainers/${targetId}/reviews`;
-      
-      const response = await fetch(endpoint, {
+      const response = await fetch(`/api/programs/${programId}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -36,9 +31,7 @@ export function ReviewForm({ type, targetId, onSuccess, onCancel }: ReviewFormPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
-        queryKey: type === "program" 
-          ? ["/api/programs", targetId, "reviews"]
-          : ["/api/trainers", targetId, "reviews"]
+        queryKey: ["/api/programs", programId, "reviews"]
       });
       toast({
         title: "Review submitted",

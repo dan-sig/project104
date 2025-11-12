@@ -4764,59 +4764,6 @@ Provide a helpful, motivating response that addresses their question using this 
   });
 
   // ==========================================
-  // TRAINER REVIEW ROUTES
-  // ==========================================
-
-  // POST /api/trainers/:id/reviews - Create a review for a trainer
-  app.post("/api/trainers/:id/reviews", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const clientId = req.user.claims.sub;
-      const { id: trainerId } = req.params;
-      const { rating, reviewText } = req.body;
-
-      if (!rating || rating < 1 || rating > 5) {
-        return res.status(400).json({ error: "Rating must be between 1 and 5" });
-      }
-
-      const canReview = await storage.canClientReviewTrainer(clientId, trainerId);
-      if (!canReview) {
-        return res.status(403).json({ error: "You can only review trainers you are connected with" });
-      }
-
-      const review = await storage.createTrainerReview({
-        trainerId,
-        clientId,
-        rating,
-        reviewText: reviewText || null,
-        status: "published",
-      });
-
-      res.status(201).json(review);
-    } catch (error) {
-      console.error("Error creating trainer review:", error);
-      res.status(500).json({ error: "Failed to create review" });
-    }
-  });
-
-  // GET /api/trainers/:id/reviews - Get reviews for a trainer
-  app.get("/api/trainers/:id/reviews", async (req: Request, res: Response) => {
-    try {
-      const { id: trainerId } = req.params;
-      const reviews = await storage.getTrainerReviews(trainerId);
-      const averageRating = await storage.getTrainerAverageRating(trainerId);
-      
-      res.json({
-        reviews,
-        averageRating,
-        totalReviews: reviews.length,
-      });
-    } catch (error) {
-      console.error("Error fetching trainer reviews:", error);
-      res.status(500).json({ error: "Failed to fetch reviews" });
-    }
-  });
-
-  // ==========================================
   // PROGRAM ASSIGNMENT ROUTES
   // ==========================================
 
